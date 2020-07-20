@@ -16,14 +16,17 @@ Assuming you already have the necessary requirements downloaded for Pytorch-Open
 
 4. Clone a copy of Yolo-Hand-Detection inside your new directory.
 
-    ```bash git clone https://github.com/cansik/yolo-hand-detection.git
+    ```bash
+    git clone https://github.com/cansik/yolo-hand-detection.git
     ```
 5. In the new "Yolo-Hand-Detection" directory, install requirements.
-    ```bash pip install -r requirements.txt
+    ```bash
+    pip install -r requirements.txt
     ```
 6. Then, download the models and weight in the same directory using terminal.
 
-    ```bash sh models/download-models.sh 
+    ```bash
+    sh models/download-models.sh 
     ```
 7. Copy the experiment videos into the "exp" folder found in "Yolo-Hand-Detection"
 
@@ -49,5 +52,6 @@ util.py | src
 2. Navigate to "Yolo-Hand-Detection" in terminal. This is where the code will be run.
 
 3. Run.
-    ```bash python video_exp2.py
+    ```bash
+    python video_exp2.py
     ```
