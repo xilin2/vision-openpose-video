@@ -15,22 +15,16 @@ Assuming you already have Pytorch-Openpose downloaded and working correctly,
 **3. In the folder "src," delete util.py.** This will be replaced by the util.py included in this repo.
 
 **4. Clone a copy of Yolo-Hand-Detection inside your new directory.** You should now have the folders, "src," "notebooks," "model," and "Yolo-Hand-Detection" in your project directory.
-
-    ```
+    
     git clone https://github.com/cansik/yolo-hand-detection.git
-    ```
     
 **5. In the new "Yolo-Hand-Detection" directory, install requirements using the terminal code below.**
     
-    ```
     pip install -r requirements.txt
-    ```
     
 **6. Then, download the models and weights in the same directory.**
    
-   ```
     sh models/download-models.sh 
-    ```
     
 **7. Copy the experiment videos into a new folder in "Yolo-Hand-Detection"** (I used the name "Yolo-Hand-Detection/exp/vids_set" which is the path I used in the code as well) 
 
