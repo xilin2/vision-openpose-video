@@ -2,56 +2,55 @@
 
 A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/Hzzone/pytorch-openpose) and [Yolo Hand Detection](https://github.com/cansik/yolo-hand-detection)
 
-I wasn't quite sure for now how to get all the files linked up, so I provided some instructions on how to organize the files.
+The repos I cloned have pre-existing connections between files (via imports, etc.). I had to preserve some of these connections (or at least to my knowledge) since some of them were encoded in files that I was unable to open through a text editor. To bypass this, the files from the two repos are organized in a slightly confusing way. I provided instructions on how to organize these files.
 
 ### Getting Started
 
-Assuming you already have the necessary requirements downloaded for Pytorch-Openpose, 
+Assuming you already have Pytorch-Openpose downloaded and working correctly, 
 
-1. Create a new local project directory.
+**1. Create a new local project directory.**
 
-2. From your original Pytorch-Openpose directory, copy over the folders "src," "notebooks," and "model." (I think this would be easier than re-downloading and compiling all of Pytorch-Openpose)
+**2. From your original Pytorch-Openpose directory, copy over the folders "src," "notebooks," and "model" into your new directory** (I think this would be easier than re-downloading and compiling all of Pytorch-Openpose)
 
-3. In the folder "src," delete util.py. This will be replaced by the util.py included in this repo.
+**3. In the folder "src," delete util.py.** This will be replaced by the util.py included in this repo.
 
-4. Clone a copy of Yolo-Hand-Detection inside your new directory. You should now have the folders, "src," "notebooks," "model," and "Yolo-Hand-Detection" in your project directory.
+**4. Clone a copy of Yolo-Hand-Detection inside your new directory.** You should now have the folders, "src," "notebooks," "model," and "Yolo-Hand-Detection" in your project directory.
 
     ```bash
     git clone https://github.com/cansik/yolo-hand-detection.git
     ```
-5. In the new "Yolo-Hand-Detection" directory, install requirements.
+**5. In the new "Yolo-Hand-Detection" directory, install requirements using the terminal code below.**
     ```bash
     pip install -r requirements.txt
     ```
-6. Then, download the models and weight in the same directory using terminal.
-
+**6. Then, download the models and weights in the same directory.**
     ```bash
     sh models/download-models.sh 
     ```
-7. Copy the experiment videos into the "exp" folder found in "Yolo-Hand-Detection"
+**7. Copy the experiment videos into a new folder in "Yolo-Hand-Detection"** (I used the name "Yolo-Hand-Detection/exp/vids_set" which is the path I used in the code as well) 
 
-8. From here, you can download the files listed in this repo. Each file will be placed as such:
+**8. From here, you can download the files listed in this repo. Each file will be placed as such:**
 
 File | Location
 ------------ | -------------
 vid_exp2.py | Yolo-Hand-Detection
 detect_hands.py | Yolo-Hand-Detection
-hand_vid.py | src
-util.py | src
+hand_vid.py | src _(openpose)_
+util.py | src _(openpose)_
 
 ### Run the Program
 
-1. Open vid_exp2.py. Check to make sure that the program will be analyzing and outputting to the correct video directory. The code can be found at the bottom.
+1. Open vid_exp2.py. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The code can be found at the bottom.
     ```python
         if __name__ == "__main__":
-        dir = 'exp/[DIRECTORY]/'
-        b_data, h_data = get_vid_data(dir) # Dictionaries with keys=filenames, each storing 2d numpy array with shapes (75,72), (75,126)
-        scipy.io.savemat('exp/[DIRECTORY]/set1_body.mat', b_data)
-        scipy.io.savemat('exp/[DIRECTORY]/set1_hand.mat', h_data)
+            dir = '[DIRECTORY]/' # I use 'exp/vids_set/'
+            ...
+            scipy.io.savemat('[DIRECTORY]/set1_body.mat', b_data)
+            scipy.io.savemat('[DIRECTORY]/set1_hand.mat', h_data)
     ```
-2. Navigate to "Yolo-Hand-Detection" in terminal. This is where the code will be run.
+2. **Navigate to "Yolo-Hand-Detection" in terminal.** This is where the code will be run.
 
-3. Run.
+3. **Run.**
     ```bash
     python video_exp2.py
     ```
