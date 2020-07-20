@@ -14,7 +14,7 @@ Assuming you already have the necessary requirements downloaded for Pytorch-Open
 
 3. In the folder "src," delete util.py. This will be replaced by the util.py included in this repo.
 
-4. Clone a copy of Yolo-Hand-Detection inside your new directory.
+4. Clone a copy of Yolo-Hand-Detection inside your new directory. You should now have the folders, "src," "notebooks," "model," and "Yolo-Hand-Detection" in your project directory.
 
     ```bash
     git clone https://github.com/cansik/yolo-hand-detection.git
