@@ -2,7 +2,7 @@
 
 A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/Hzzone/pytorch-openpose) and [Yolo Hand Detection](https://github.com/cansik/yolo-hand-detection)
 
-The repos I cloned have pre-existing connections between files (via imports, etc.). I had to preserve some of these connections (or at least to my knowledge) since some of them were encoded in files that I was unable to open through a text editor. To bypass this, the files from the two repos are organized in a slightly confusing way. I provided instructions on how to organize these files.
+The two repos above have pre-existing connections between files (via imports, etc.). I had to preserve some of these connections (or at least to my knowledge) since some of them were encoded in files that I was unable to open through a text editor. To bypass this, the files from the two repos are organized in a slightly confusing way. I provided instructions on how to organize these files.
 
 ### Getting Started
 
