@@ -260,7 +260,7 @@ def get_vid_data(dir):
                 
                     #print(str(len(b_features))+'/10')
                 
-                if len(b_features) == 2: # Breaks after analyzing 75 frames
+                if len(b_features) == 75: # Breaks after analyzing 75 frames
                     break
             
             body_list[vid_info[1]] = np.array(b_features)
