@@ -44,11 +44,8 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
 
 1. Open vid_exp2.py. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The code can be found at the bottom.
     ```python
-        if __name__ == "__main__":
-            dir = '[DIRECTORY]/' # I use 'exp/vids_set/'
-            ...
-            scipy.io.savemat('[DIRECTORY]/set1_body.mat', b_data)
-            scipy.io.savemat('[DIRECTORY]/set1_hand.mat', h_data)
+    if __name__ == "__main__":
+        dir = 'exp/vids_set/'
     ```
 2. **Navigate to "Yolo-Hand-Detection" in terminal.** This is where the code will be run.
 
