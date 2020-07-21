@@ -260,7 +260,7 @@ def get_vid_data(dir):
                 
                     #print(str(len(b_features))+'/10')
                 
-                if len(b_features) == 2: # Breaks after analyzing 75 frames
+                if len(b_features) == 75: # Breaks after analyzing 75 frames
                     break
             
             body_list[vid_info[1]] = np.array(b_features)
@@ -287,8 +287,8 @@ def get_vid_data(dir):
     return body_list, hand_list  # Dictionaries with each key storing 2d numpy array with shape (75,72), (75,126)
 
 if __name__ == "__main__":
-    dir = 'exp/demo/'
+    dir = 'exp/vids_set/'
     b_data, h_data = get_vid_data(dir) # Dictionaries with keys=filenames, each storing 2d numpy array with shapes (75,72), (75,126)
-    scipy.io.savemat('exp/demo/set1_body.mat', b_data)
-    scipy.io.savemat('exp/demo/set1_hand.mat', h_data)
+    scipy.io.savemat('exp/vids_set/set1_body.mat', b_data)
+    scipy.io.savemat('exp/vids_set/set1_hand.mat', h_data)
     set_trace()
