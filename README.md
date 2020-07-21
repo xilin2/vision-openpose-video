@@ -1,11 +1,16 @@
 ## pytorch-openpose + yolo_hand_detection for experiment 2
 
-A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/Hzzone/pytorch-openpose) and [Yolo Hand Detection](https://github.com/cansik/yolo-hand-detection)
+A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/Hzzone/pytorch-openpose) and [Yolo Hand Detection](https://github.com/cansik/yolo-hand-detection). **Requires Pytorch.**
 
 ### Clone repo
 
     git clone https://github.com/xilinzhou/vision-openpose-video.git
     
+### Install requirements
+While in project root directory, install other requirements. 
+
+    pip install -r requirements.txt
+
 ### Add Models
 
 There are two sets of models to be added: Pytorch OpenPose and Yolo Hand Detection
