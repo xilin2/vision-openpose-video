@@ -11,7 +11,7 @@ A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/
 There are two sets of models to be added: Pytorch OpenPose and Yolo Hand Detection
 
 **1. Add Pytorch OpenPose models.**
-You have two options. If you have the models already available, you can copy over the models into the directory "model" found in the project root directory. Otherwise, you can download the models into the same "model" folder from [Dropbox](https://www.dropbox.com/sh/7xbup2qsn7vvjxo/AABWFksdlgOMXR_r5v3RwKRYa?dl=0). You shoudl have the following file in your "model" folder.
+You have two options. If you have the models already available, you can copy over the models into the directory "model" found in the project root directory. Otherwise, you can download the models into the same "model" folder from [Dropbox](https://www.dropbox.com/sh/7xbup2qsn7vvjxo/AABWFksdlgOMXR_r5v3RwKRYa?dl=0). You should have the following files in your "model" folder.
 
 * body_pose.caffemodel
 * hand_pose.caffemodel
@@ -21,11 +21,11 @@ You have two options. If you have the models already available, you can copy ove
 * hand_pose_model.pth
 
 **2. Add Yolo Hand Detections models**
-Again, you have two options. If already downloaded, you can copy over the models in to the directory "Yolo-Hand-Detection/models" directory. Otherwise, you can download the models in terminal.
+Again, you have two options. If already downloaded, you can copy over the models into your "Yolo-Hand-Detection/models" directory. Otherwise, you can download the models in terminal.
 
     sh models/download-models.sh 
     
-Once complete, you sohould have the following files in your "Yolo-Hand-Detection/models" folder.
+Once complete, you should have the following files in your "Yolo-Hand-Detection/models" folder.
 
 * cross-hands-tiny-prn.cfg
 * cross-hands.cfg
