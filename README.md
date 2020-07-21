@@ -4,7 +4,7 @@ A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/
 
 ### Clone repo
 
-    git clone https://github.com/cansik/yolo-hand-detection.git
+    git clone https://github.com/xilinzhou/vision-openpose-video.git
     
 ### Add Models
 
