@@ -233,16 +233,24 @@ def draw_hand_points(canvas, points):
     return canvas
 
 # added by Xilin for exp2
+def draw_handbox(canvas, hand_data):
+    for x, y, w, h in hand_data:
+        color = (255, 0, 255)
+        cv2.rectangle(canvas, (x, y), (x + w, y + h), color, 1)
+    return canvas
+
+# added by Xilin for exp2
 # reorder hands from L to R
-def reorder_hands_L_R(final_points):
-    a = []
-    scores = [0,0] # [h1, h2]
-    for i, hand in enumerate(final_points):
-        for point in hand:
-            scores[i] += point[0]
+def reorder_hands_L_R(final_points, detect_hand_pose):
+    a = []; scores = [0,0]
+    if detect_hand_pose:
+        for i, hand in enumerate(final_points):
+            for point in hand:
+                scores[i] += point[0]
+    else:
+        for i, hand in enumerate(final_points):
+            scores[i] = hand[0]
     l_index = np.argmin(scores)
-    r_index = 1 - l_index
-    a.append(final_points[l_index])
-    a.append(final_points[r_index])
+    a.append(final_points[l_index]); a.append(final_points[1-l_index])
     return a
     
