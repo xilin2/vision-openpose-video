@@ -2,40 +2,38 @@
 
 A combination of two GitHub repositories: [Pytorch OpenPose](https://github.com/Hzzone/pytorch-openpose) and [Yolo Hand Detection](https://github.com/cansik/yolo-hand-detection)
 
-The two repos above have pre-existing connections between files (via imports, etc.). I had to preserve some of these connections (or at least to my knowledge) since some of these connections were encoded in files which I was unable to open through a text editor. To bypass this, the files from the two repos have been organized in a very specific and slightly confusing way. I provide instructions on how to donwload and organize these files.
+### Clone repo
 
-### Getting Started
-
-Assuming you already have Pytorch-Openpose downloaded and working correctly, 
-
-**1. Create a new local project directory.**
-
-**2. From your original Pytorch-Openpose directory, copy over the folders "src," "notebooks," and "model" into your new directory** (I think this would be easier than re-downloading and compiling all of Pytorch-Openpose)
-
-**3. In the folder "src," delete util.py.** This will be replaced by the util.py included in this repo.
-
-**4. Clone a copy of Yolo-Hand-Detection inside your new directory.** You should now have the folders, "src," "notebooks," "model," and "Yolo-Hand-Detection" in your project directory.
-    
     git clone https://github.com/cansik/yolo-hand-detection.git
     
-**5. In the new "Yolo-Hand-Detection" directory, install requirements using the terminal code below.**
-    
-    pip install -r requirements.txt
-    
-**6. Then, download the models and weights in the same directory.**
-   
+### Add Models
+
+There are two sets of models to be added: Pytorch OpenPose and Yolo Hand Detection
+
+**1. Add Pytorch OpenPose models.**
+You have two options. If you have the models already available, you can copy over the models into the directory "model" found in the project root directory. Otherwise, you can download the models into the same "model" folder from [Dropbox](https://www.dropbox.com/sh/7xbup2qsn7vvjxo/AABWFksdlgOMXR_r5v3RwKRYa?dl=0). You shoudl have the following file in your "model" folder.
+
+* body_pose.caffemodel
+* hand_pose.caffemodel
+* body_pose_deploy.prototxt
+* hand_pose_deploy.prototxt
+* body_pose_model.pth
+* hand_pose_model.pth
+
+**2. Add Yolo Hand Detections models**
+Again, you have two options. If already downloaded, you can copy over the models in to the directory "Yolo-Hand-Detection/models" directory. Otherwise, you can download the models in terminal.
+
     sh models/download-models.sh 
     
-**7. Copy the experiment videos into a new folder in "Yolo-Hand-Detection"** (I used the name "Yolo-Hand-Detection/exp/vids_set" which is the path I used in the code as well) 
+Once complete, you sohould have the following files in your "Yolo-Hand-Detection/models" folder.
 
-**8. From here, you can download the files listed in this repo. Each file will be placed as such:**
-
-File | Location
------------- | -------------
-vid_exp2.py | Yolo-Hand-Detection
-detect_hands.py | Yolo-Hand-Detection
-hand_vid.py | src _(openpose)_
-util.py | src _(openpose)_
+* cross-hands-tiny-prn.cfg
+* cross-hands.cfg
+* cross-hands-tiny-prn.weights
+* cross-hands.weights
+* cross-hands-tiny.cfg
+* download-models.sh
+* cross-hands-tiny.weights
 
 ### Run the Program
 
