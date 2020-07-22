@@ -29,8 +29,9 @@ from src.body import Body
 from src.hand_vid import Hand
 
 # clean up; Ensures that the boundaries of hand box does not exceed frame
-def bound_to_frame(x, y, w, h, frame):
+def bound_to_frame(box_coord, frame):
 
+    x, y, w, h = box_coord[0], box_coord[1], box_coord[2], box_coord[3]
     height, width = len(frame[0]), len(frame[1])
     
     if x+w > width:
@@ -47,7 +48,7 @@ def bound_to_frame(x, y, w, h, frame):
     elif y > height:
         y = height
         
-    return x, y, w, h
+    return [x, y, w, h]
         
 
 # Returns image file associated with MPL plot
@@ -168,13 +169,8 @@ def get_vid_data(dir, detect_hand_pose=False):
                     
                     elif len(prev_body) == 0: # No previous body stored, more than 1 person detected. Sets person with most keypoints as new body.
                         if len(subset) > 1: # Reduces subset to person with most keypoints
-                            body_parts_count = []
-                            for person in subset:
-                                body_parts_count.append(person[19])
-                            while len(subset) != 1:
-                                smallest = body_parts_count.index(min(body_parts_count))
-                                subset = np.delete(subset, smallest, axis=0)
-                                body_parts_count.pop(smallest)
+                            subset = sorted(subset, key = lambda x: x[19])
+                            subset = np.array([subset[len(subset)-1]])
                         p = get_coords(subset, candidate)
                         prev_body = copy.deepcopy(p)
                     
@@ -201,14 +197,14 @@ def get_vid_data(dir, detect_hand_pose=False):
                     frame_hand_data = []
                     final_hands = []
                         
+                    # BOTH
                     if len(hands_detected) == 0: # Hands not detected by OP detector
                         box_coords = detect_hands(frame) # Run through Yolo detector
                         box_coords = sorted(box_coords, key = lambda x: x[4]) # sort by confidence
-                        box_coords = [box[0:4] for box in box_coords] # removes confidence at ind 5
+                        box_coords = [box[0:4] for box in box_coords] # removes confidence at ind 5 --> for both
                         while len(hands_detected) < 2 and len(box_coords) > 0: # keeps two highest confidence hands
-                            hands_detected.append(box_coords[-1])
+                            hands_detected.append(bound_to_frame(box_coords[-1], frame))
                             box_coords.pop()
-                        
                     else:
                         for hand in hands_detected:
                             hand[3] = hand[2] # sets height index (3) equal to width
@@ -216,7 +212,6 @@ def get_vid_data(dir, detect_hand_pose=False):
                     if detect_hand_pose: # Sends box into OP hand pose network
                         counts = [] # lists number of joints detected for each hand
                         for hand in hands_detected:
-                            x, y, w, h = bound_to_frame(hand[0], hand[1], hand[2], hand[3], frame)
                             peaks, c = hand_estimation(frame[y:y+h, x:x+w, :])
                             peaks[:, 0] = np.where(peaks[:, 0]==0, peaks[:, 0], peaks[:, 0]+x)
                             peaks[:, 1] = np.where(peaks[:, 1]==0, peaks[:, 1], peaks[:, 1]+y)
@@ -228,26 +223,19 @@ def get_vid_data(dir, detect_hand_pose=False):
                     
                     m1, m2 = 0, 1 # tentative indeces of selected hands in frame_hand_data
                             
-                    if len(frame_hand_data) != 2:
-#                        if len(frame_hand_data) > 2: # only possible for detect_pose
-#                            m1 = np.argmax(counts) # m1, m2 stores indeces of hands with top two most joints
-#                            counts[h1] = 0
-#                            m2 = np.argmax(counts)
-#                        else: # less than two hands
-                        while len(frame_hand_data) != 2:
-                            if detect_hand_pose:
-                                s = [[0,0,n] for n in range(21)] # creates empty hand where n is joint id
-                            else:
-                                s = [0,0,0,0] # creates empty box
-                            frame_hand_data.append(np.array(s))
+                    #if len(frame_hand_data) != 2:
+                    while len(frame_hand_data) < 2:
+                        if detect_hand_pose:
+                            s = [[0,0,n] for n in range(21)] # creates empty hand where n is joint id
+                        else:
+                            s = [0,0,0,0] # creates empty box
+                        frame_hand_data.append(np.array(s))
                                 
                     h1 = frame_hand_data[m1]; h2 = frame_hand_data[m2]
                     final_hands.append(h1); final_hands.append(h2)
     
                     final_hands = util.reorder_hands_L_R(final_hands, detect_hand_pose)
                     h_features.append(np.array(final_hands).flatten())
-                    
-                    #set_trace()
                     
                     # Draw body pose
                     canvas = copy.deepcopy(frame)
@@ -256,7 +244,6 @@ def get_vid_data(dir, detect_hand_pose=False):
                         canvas = util.draw_handpose(canvas, final_hands)
                     else:
                         canvas = util.draw_handbox(canvas, final_hands)
-                    #canvas = util.draw_handpose(canvas, peaks)
                     
                     # Draw and save frame
                     im = plt.imshow(canvas[:, :, [2, 1, 0]])
@@ -264,7 +251,7 @@ def get_vid_data(dir, detect_hand_pose=False):
                     frames.append(get_img_from_fig(plt))
                     plt.close()
                 
-                    #print(str(len(b_features))+'/75')
+                    print(str(len(b_features))+'/75')
                 
                 if len(b_features) == 75: # Breaks after analyzing 75 frames
                     break
@@ -281,7 +268,6 @@ def get_vid_data(dir, detect_hand_pose=False):
             out.release()
             
             # Tracks and prints progress through folder
-            #print(str(counter),'/',str(len(vid_list)),': ',vid_info[1],' complete',)
             print('{} / {}: {} complete'.format(counter, len(vid_list), vid_info[1]))
 
         except Exception as e:
