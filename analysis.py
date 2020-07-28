@@ -3,6 +3,13 @@ import numpy as np
 import scipy.io
 import pandas as pd
 import seaborn as sns
+
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+import scipy.cluster.hierarchy as sch
+from sklearn.datasets import load_iris
+from sklearn.cluster import AgglomerativeClustering
+
 from pdb import set_trace
 
 def new_to_df(b_data, h_data, names):
@@ -44,8 +51,18 @@ def to_df(data, names):
     df = pd.DataFrame(values, columns=actions)
     return df
 
+#15000, __, 16000
+def plot_heir_cluster(df, label):
+    while True:
+        set_trace()
+        dg = sch.dendrogram(sch.linkage(df, method  = "ward"), leaf_rotation=90, leaf_font_size=5, labels=df.index)
+        plt.title(label)
+        plt.xlabel('Videos')
+        #plt.ylabel('Euclidean distances')
+        plt.show()
+
 # Creates heatmap of datagram
-def create_heatmap(df, label):
+def plot_heatmap(df, label):
     #Create Correlation df
     corr = df.corr()
     #Plot figsize
@@ -91,7 +108,12 @@ if __name__ == "__main__":
     hand_df = to_df(hand, set1_names)
     b_df, h_df, c_df = new_to_df(body, hand, set1_names)
     
+    #plot_heir_cluster(b_df.T, 'body')
+    #plot_heir_cluster(h_df.T, 'hand')
+    plot_heir_cluster(c_df.T, 'combined')
+
+    set_trace()
     # Creates heatmap
-    create_heatmap(b_df, 'body')
-    create_heatmap(h_df, 'hand')
-    create_heatmap(c_df, 'combined')
+    plot_heatmap(b_df, 'body')
+    plot_heatmap(h_df, 'hand')
+    plot_heatmap(c_df, 'combined')
