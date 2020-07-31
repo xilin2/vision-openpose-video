@@ -43,7 +43,7 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
 
 ### Run Data Extraction
 
-1. Open *vid_exp2.py* found in the "Yolo-Hand-Detection" folder. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The lines to do so can be found at the code's bottom.
+1. Open *video_exp2.py* found in the "Yolo-Hand-Detection" folder. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The lines to do so can be found at the code's bottom.
     ```python
     if __name__ == "__main__":
         dir = '[DIRECTORY]/'
