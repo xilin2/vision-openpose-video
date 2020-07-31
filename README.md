@@ -66,7 +66,7 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
         xls = pd.ExcelFile('[PATH]/vidnamekey.xlsx')
     ```
     
-    2. **Run.** This will save several dendrogram and heatmaps as .pngs found in the "plots" folder, as well as print in terminal the correlation values between the features of video sets 1 and 2.
+2. **Run.** This will save several dendrogram and heatmaps as .pngs found in the "plots" folder, as well as print in terminal the correlation values between the features of video sets 1 and 2.
     ```bash
     python analysis.py
     ```
