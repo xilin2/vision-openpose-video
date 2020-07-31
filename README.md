@@ -40,16 +40,34 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
 * download-models.sh
 * cross-hands-tiny.weights
 
-### Run the Program
+### Run Data Extraction
 
-1. Open vid_exp2.py. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The code can be found at the bottom.
+1. Open *vid_exp2.py* in "Yolo-Hand-Detection" folder. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The code can be found at the bottom.
     ```python
     if __name__ == "__main__":
         dir = '[DIRECTORY]/'
     ```
 2. **Navigate to "Yolo-Hand-Detection" in terminal.** This is where the code will be run.
 
-3. **Run.**
+3. **Run.** This will output two .mat files storing data for hand and body features. 
     ```bash
     python video_exp2.py
     ```
+
+### Run Data Analysis
+
+1. Open *analysis.py* in project root directory. **Make sure that the correct paths for the feature data .mat files and the video name key are listed.** The code can be found at the start of the Python Main function. 
+    ```python
+    if __name__ == "__main__":
+        body = scipy.io.loadmat('vids_set_body.mat')
+        hand_box = scipy.io.loadmat('vids_set_hand.mat')
+        hand_pose = scipy.io.loadmat('set1_hand.mat')
+        xls = pd.ExcelFile('vidnamekey.xlsx')
+    ```
+    
+    2. **Run.** This will output several dendrogram and heatmaps as .pngs found in the "plots" folder, as well as print in terminal the correlation values between the features of video sets 1 and 2.
+    ```bash
+    python analysis.py
+    ```
+    
+    
