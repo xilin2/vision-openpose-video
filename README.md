@@ -16,7 +16,7 @@ While in project root directory, install other requirements.
 There are two sets of models to be added: Pytorch OpenPose and Yolo Hand Detection
 
 **1. Add Pytorch OpenPose models.**
-You have two options. If you have the models already available, you can copy over the models into the directory "model" found in the project root directory. Otherwise, you can download the models into the same "model" folder from [Dropbox](https://www.dropbox.com/sh/7xbup2qsn7vvjxo/AABWFksdlgOMXR_r5v3RwKRYa?dl=0). You should have the following files in your "model" folder.
+You have two options. If you have the models already available, you can copy over the models into the "model" folder found in the project root directory. Otherwise, you can download the models into the same "model" folder mentioned previously using [Dropbox](https://www.dropbox.com/sh/7xbup2qsn7vvjxo/AABWFksdlgOMXR_r5v3RwKRYa?dl=0). After doing so, you should have the following files in your "model" folder.
 
 * body_pose.caffemodel
 * hand_pose.caffemodel
@@ -26,11 +26,12 @@ You have two options. If you have the models already available, you can copy ove
 * hand_pose_model.pth
 
 **2. Add Yolo Hand Detections models**
-Again, you have two options. If already downloaded, you can copy over the models into your "Yolo-Hand-Detection/models" directory. Otherwise, you can download the models in terminal.
-
+Again, you have two options. If already downloaded, you can copy over the models into your "Yolo-Hand-Detection/models" folder. Otherwise, you can download the models in terminal while in the "Yolo-Hand-Detection" directory.
+    
+    cd Yolo-Hand-Detection
     sh models/download-models.sh 
     
-Once complete, you should have the following files in your "Yolo-Hand-Detection/models" folder.
+Once complete, you should have the following files in your "Yolo-Hand-Detection/models" folder. (You may have to move these files into the correct folder)
 
 * cross-hands-tiny-prn.cfg
 * cross-hands.cfg
@@ -42,7 +43,7 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
 
 ### Run Data Extraction
 
-1. Open *vid_exp2.py* in "Yolo-Hand-Detection" folder. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The code can be found at the bottom.
+1. Open *vid_exp2.py* found in the "Yolo-Hand-Detection" folder. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The lines to do so can be found at the code's bottom.
     ```python
     if __name__ == "__main__":
         dir = '[DIRECTORY]/'
@@ -56,16 +57,16 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
 
 ### Run Data Analysis
 
-1. Open *analysis.py* in project root directory. **Make sure that the correct paths for the feature data .mat files and the video name key are listed.** The code can be found at the start of the Python Main function. 
+1. Open *analysis.py* found in project root directory. **Make sure that the correct paths for the feature data .mat files and the video name key are listed.** The lines to do so can be found at the start of the Python Main function. 
     ```python
     if __name__ == "__main__":
-        body = scipy.io.loadmat('vids_set_body.mat')
-        hand_box = scipy.io.loadmat('vids_set_hand.mat')
-        hand_pose = scipy.io.loadmat('set1_hand.mat')
-        xls = pd.ExcelFile('vidnamekey.xlsx')
+        body = scipy.io.loadmat('[PATH]/vids_set_body.mat')
+        hand_box = scipy.io.loadmat('[PATH]/vids_set_hand.mat')
+        hand_pose = scipy.io.loadmat('[PATH]/set1_hand.mat')
+        xls = pd.ExcelFile('[PATH]/vidnamekey.xlsx')
     ```
     
-    2. **Run.** This will output several dendrogram and heatmaps as .pngs found in the "plots" folder, as well as print in terminal the correlation values between the features of video sets 1 and 2.
+    2. **Run.** This will save several dendrogram and heatmaps as .pngs found in the "plots" folder, as well as print in terminal the correlation values between the features of video sets 1 and 2.
     ```bash
     python analysis.py
     ```
