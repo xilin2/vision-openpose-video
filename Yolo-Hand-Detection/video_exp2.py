@@ -97,7 +97,7 @@ def get_average_dist(prev, curr):
     else:
         return tot/num
             
-# Returns two dictionaries storing 2d numpy arrays containing pose data for each video in a directory
+# Returns two dictionaries storing 2d numpy arrays containing pose data for each video in a video set
 def get_vid_data(dir, detect_hand_pose=False):
 
     vid_list = []
@@ -143,9 +143,9 @@ def get_vid_data(dir, detect_hand_pose=False):
 
             b_features = [] # 2d array to temporarily store each video's pose features, dim = [frame count=75), 18*4=72]
             h_features = [] # dim = [75, 3*21*2=126] OR [75, 4*2=8]
-            frames = [] # stores drawn frames to later write into video
+            frames = [] # Stores drawn frames to later write into video
 
-            prev_body = [] # stores the last detected body pose
+            tracked_body = [] # Stores the last detected body pose
             
             while True:
                 
@@ -162,55 +162,58 @@ def get_vid_data(dir, detect_hand_pose=False):
                     
                     candidate, subset = body_estimation(frame)
                     
-                    if len(subset) < 1: # No person detected. Creates an empty features array and resets previous body to []
+                    if len(subset) < 1: # No person detected. Create an empty features array and reset tracked body to []
                         while len(subset) != 1:
                             subset = np.append(subset, [np.ones(20)*-1], axis=0)
-                        prev_body = [] # resets prev_body
+                        tracked_body = [] # resets tracked_body
                     
-                    elif len(prev_body) == 0: # No previous body stored, more than 1 person detected. Sets person with most keypoints as new body.
-                        if len(subset) > 1: # Reduces subset to person with most keypoints
+                    elif len(tracked_body) == 0: # No tracked body stored, more than 1 person detected. Set person with most keypoints as new tracked body.
+                        if len(subset) > 1: # Reduce subset to person with most keypoints
                             subset = sorted(subset, key = lambda x: x[19])
                             subset = np.array([subset[len(subset)-1]])
                         p = get_coords(subset, candidate)
-                        prev_body = copy.deepcopy(p)
+                        tracked_body = copy.deepcopy(p)
                     
-                    elif len(subset) > 1: # Previous body stored and mult ppl detected. Finds detected person who is closest in distance to prev_body. Sets this person as new body.
+                    elif len(subset) > 1: # There is a body being tracked and mult ppl are detected. Find detected person who is closest in distance to tracked_body. Set this person as new tracked body.
                         dist = []
                         for person in subset:
                             coord = get_coords(person, candidate)
-                            dist.append(get_average_dist(prev_body, coord))
-                        ind = np.argmin(dist) # finds index of minimum distance
-                        subset = np.array([subset[ind]]) # person who is closest to prev_body
+                            dist.append(get_average_dist(tracked_body, coord))
+                        ind = np.argmin(dist) # find index of minimum distance
+                        subset = np.array([subset[ind]]) # person who is closest to tracked_body
                         p = get_coords(subset, candidate)
-                        prev_body = copy.deepcopy(p)
+                        tracked_body = copy.deepcopy(p)
                     
-                    else: # Previous body stored and only one person detected. Sets person as new body.
+                    else: # Tracked body stored and only one person detected. Set person as new tracked body.
                         p = get_coords(subset, candidate)
-                        prev_body = copy.deepcopy(p)
+                        tracked_body = copy.deepcopy(p)
                         
                     x = get_features(subset, candidate)
-                    b_features.append(x) # appends flattened array to body features
+                    b_features.append(x) # append flattened array to body features
                                     
                     ''' Hands '''
                     
-                    hands_detected = util.handDetect(candidate, subset, frame)
                     frame_hand_data = []
                     final_hands = []
-                        
-                    # BOTH
-                    if len(hands_detected) == 0: # Hands not detected by OP detector
-                        box_coords = detect_hands(frame) # Run through Yolo detector
-                        box_coords = sorted(box_coords, key = lambda x: x[4]) # sort by confidence
-                        box_coords = [box[0:4] for box in box_coords] # removes confidence at ind 5 --> for both
-                        while len(hands_detected) < 2 and len(box_coords) > 0: # keeps two highest confidence hands
+                    
+                    # Retrieve hand box coordinates using OpenPose or Yolo
+                    
+                    hands_detected = util.handDetect(candidate, subset, frame) # run through OP hand detector
+                    
+                    if len(hands_detected) == 0: # no hands detected by OP hand detector
+                        box_coords = detect_hands(frame) # run through Yolo hand detector
+                        box_coords = sorted(box_coords, key = lambda x: x[4]) # sort hands by confidence
+                        box_coords = [box[0:4] for box in box_coords] # remove confidence value at ind 5
+                        while len(hands_detected) < 2 and len(box_coords) > 0: # keep two highest confidence hands
                             hands_detected.append(bound_to_frame(box_coords[-1], frame))
                             box_coords.pop()
                     else:
                         for hand in hands_detected:
-                            hand[3] = hand[2] # sets height index (3) equal to width
+                            hand[3] = hand[2] # set height index (3) equal to width
                     
-                    if detect_hand_pose: # Sends box into OP hand pose network
-                        counts = [] # lists number of joints detected for each hand
+                    # detect_hand_pose is True. Send boxed portions of image into OP hand pose network to detect hand pose
+                    if detect_hand_pose:
+                        counts = [] # list number of keypoints detected for each hand
                         for hand in hands_detected:
                             peaks, c = hand_estimation(frame[y:y+h, x:x+w, :])
                             peaks[:, 0] = np.where(peaks[:, 0]==0, peaks[:, 0], peaks[:, 0]+x)
@@ -223,10 +226,9 @@ def get_vid_data(dir, detect_hand_pose=False):
                     
                     m1, m2 = 0, 1 # tentative indeces of selected hands in frame_hand_data
                             
-                    #if len(frame_hand_data) != 2:
-                    while len(frame_hand_data) < 2:
+                    while len(frame_hand_data) < 2: # In the case that there are less than two hands detected, add empty hands to feature array
                         if detect_hand_pose:
-                            s = [[0,0,n] for n in range(21)] # creates empty hand where n is joint id
+                            s = [[0,0,n] for n in range(21)] # create empty hand where n is joint id
                         else:
                             s = [0,0,0,0] # creates empty box
                         frame_hand_data.append(np.array(s))
@@ -237,7 +239,7 @@ def get_vid_data(dir, detect_hand_pose=False):
                     final_hands = util.reorder_hands_L_R(final_hands, detect_hand_pose)
                     h_features.append(np.array(final_hands).flatten())
                     
-                    # Draw body pose
+                    # Draw body and hand poses/box
                     canvas = copy.deepcopy(frame)
                     canvas = util.draw_bodypose(canvas, candidate, subset)
                     if detect_hand_pose:
@@ -251,11 +253,12 @@ def get_vid_data(dir, detect_hand_pose=False):
                     frames.append(get_img_from_fig(plt))
                     plt.close()
                 
-                    print(str(len(b_features))+'/75')
+                    #print(str(len(b_features))+'/75')
                 
-                if len(b_features) == 75: # Breaks after analyzing 75 frames
+                if len(b_features) == 75: # Break after analyzing 75 frames
                     break
             
+            # Store body and hand arrays into dictionaries under filename key
             body_list[vid_info[1]] = np.array(b_features).astype(float)
             hand_list[vid_info[1]] = np.array(h_features)
             cap.release()
@@ -267,7 +270,7 @@ def get_vid_data(dir, detect_hand_pose=False):
                 out.write(frames[i])
             out.release()
             
-            # Tracks and prints progress through folder
+            # Track and print progress through folder
             print('{} / {}: {} complete'.format(counter, len(vid_list), vid_info[1]))
 
         except Exception as e:
