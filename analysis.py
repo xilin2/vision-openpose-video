@@ -3,6 +3,7 @@ import numpy as np
 import scipy.io
 import pandas as pd
 import seaborn as sns
+import os
 
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
@@ -10,6 +11,7 @@ import scipy.cluster.hierarchy as sch
 from sklearn.datasets import load_iris
 from sklearn.cluster import AgglomerativeClustering
 from scipy.signal import correlate
+from scipy.stats import zscore
 
 from pdb import set_trace
 
@@ -35,9 +37,12 @@ def to_df(b_data, h_box_data, h_pose_data, names):
             c_box_values[b_len+i].append(val)
         for i, val in enumerate((h_pose_data[key])):
             c_pose_values[b_len+i].append(val)
-            
+
     c_box_df = pd.DataFrame(c_box_values, columns=actions)
     c_pose_df = pd.DataFrame(c_pose_values, columns=actions)
+    c_box_df = c_box_df.apply(zscore)
+    c_pose_df = c_pose_df.apply(zscore)
+
     return c_box_df, c_pose_df
     
 #15000, __, 16000
@@ -70,11 +75,13 @@ def plot_heatmap(df, met, h_data_set, vid_set_num):
     return
 
 if __name__ == "__main__":
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    dir_features = dir_path + '/Yolo-Hand-Detection/exp/vids_set/'
     
     # Load name and feature data from files into dictionary
-    body = scipy.io.loadmat('vids_set_body.mat')
-    hand_box = scipy.io.loadmat('vids_set_hand.mat')
-    hand_pose = scipy.io.loadmat('set1_hand.mat')
+    body = scipy.io.loadmat(dir_features + 'vids_set_body.mat')
+    hand_box = scipy.io.loadmat(dir_features + 'vids_set_hand.mat')
+    hand_pose = scipy.io.loadmat(dir_features + 'vids_set_fingers.mat')
     xls = pd.ExcelFile('vidnamekey.xlsx')
 
     # Delete extra dictionary keys
