@@ -13,9 +13,7 @@ While in project root directory, install other requirements.
 
 ### Add Models
 
-There are two sets of models to be added: Pytorch OpenPose and Yolo Hand Detection
-
-Both sets of models can be found in the project's [OSF repo](https://osf.io/jxkbn/) under '5-Pose Models'. 
+There are two sets of models to be added: Pytorch OpenPose and Yolo Hand Detection. **Both sets of models can be found in the project's [OSF repo](https://osf.io/jxkbn/) under '5-Pose Models'.** 
 
 **1. Add Pytorch OpenPose models.**
 You have two options. If you have the OpenPose models already available, you can copy over the models into the "model" folder found in the project root directory. Otherwise, you can download the models into the same "model" folder mentioned previously using [Dropbox](https://www.dropbox.com/sh/7xbup2qsn7vvjxo/AABWFksdlgOMXR_r5v3RwKRYa?dl=0). After doing so, you should have the following files in your "model" folder.
@@ -45,7 +43,7 @@ Once complete, you should have the following files in your "Yolo-Hand-Detection/
 
 ### Run Data Extraction
 
-Note: This code takes a while to run. We also have the final .mat feature files available in the project's [OSF repo](https://osf.io/jxkbn/) under '6-Pose Features'. 
+Note: This code takes a while to run. **We also have the final .mat feature files available in the project's [OSF repo](https://osf.io/jxkbn/) under '6-Pose Features'.** 
 
 1. Open *video_exp2.py* found in the "Yolo-Hand-Detection" folder. **Check to make sure that the program will be analyzing and outputting to the correct video directory.** The lines to do so can be found at the code's bottom.
     ```python
