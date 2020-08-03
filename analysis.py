@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # Load name and feature data from files into dictionary
     body = scipy.io.loadmat('vids_set_body.mat')
     hand_box = scipy.io.loadmat('vids_set_hand.mat')
-    hand_pose = scipy.io.loadmat('set1_hand.mat')
+    hand_pose = scipy.io.loadmat('vids_set_fingers.mat')
     xls = pd.ExcelFile('vidnamekey.xlsx')
 
     # Delete extra dictionary keys
