@@ -10,10 +10,11 @@ import scipy.cluster.hierarchy as sch
 from sklearn.datasets import load_iris
 from sklearn.cluster import AgglomerativeClustering
 from scipy.signal import correlate
+from scipy.stats import zscore
 
 from pdb import set_trace
 
-# Return two dataframes with body + hand box features, and body + hand pose features of index length 6000 and 14850, respectively. The index corresponds to a value within each video's dataset, and the columns correspond to the video list.
+# Return two dataframes with body + hand box features, and body + hand fingers features of index length 6000 and 14850, respectively. The index corresponds to a value within each video's dataset, and the columns correspond to the videos in the video set.
 def to_df(b_data, h_box_data, h_pose_data, names):
 
     b_len = len(b_data[list(b_data.keys())[0]])
@@ -38,6 +39,9 @@ def to_df(b_data, h_box_data, h_pose_data, names):
             
     c_box_df = pd.DataFrame(c_box_values, columns=actions)
     c_pose_df = pd.DataFrame(c_pose_values, columns=actions)
+    c_box_df = c_box_df.apply(zscore)
+    c_pose_df = c_pose_df.apply(zscore)
+    
     return c_box_df, c_pose_df
     
 #15000, __, 16000
@@ -49,7 +53,7 @@ def plot_heir_cluster(df, met, h_data_set, vid_set_num):
     plt.xlabel('Videos')
     plt.gcf().set_size_inches((10,10))
     plt.subplots_adjust(left=0.22)
-    plt.savefig('plots/{}_{}_{}_dgram.png'.format(met, h_data_set, vid_set_num))
+    plt.savefig('plots/{}_{}_vidset{}_dgram.png'.format(met, h_data_set, vid_set_num))
     #plt.show()
     plt.close()
     return dg['leaves']
@@ -64,7 +68,7 @@ def plot_heatmap(df, met, h_data_set, vid_set_num):
     plt.subplots_adjust(left=0.22, bottom=0.20, top=0.95, right=0.90)
     plt.xticks(range(len(corr.columns)), corr.columns);
     plt.yticks(range(len(corr.columns)), corr.columns)
-    plt.savefig('plots/{}_{}_{}_heatmap.png'.format(met, h_data_set, vid_set_num))
+    plt.savefig('plots/{}_{}_vidset{}_heatmap.png'.format(met, h_data_set, vid_set_num))
     #plt.show()
     plt.close()
     return
@@ -96,13 +100,13 @@ if __name__ == "__main__":
     # Create 4 DataFrames corresponding to different video sets and hand data sets
     body_and_box_df_1, body_and_pose_df_1 = to_df(body, hand_box, hand_pose, set1_names)
     body_and_box_df_2, body_and_pose_df_2 = to_df(body, hand_box, hand_pose, set2_names)
-    dfs = [[body_and_box_df_1, body_and_box_df_2, 'box'], [body_and_pose_df_1, body_and_pose_df_2, 'pose']]
+    dfs = [[body_and_box_df_1, body_and_box_df_2, 'handbox'], [body_and_pose_df_1, body_and_pose_df_2, 'handfingers']]
     
     methods = ['complete', 'average', 'weighted', 'ward']
     
-    for df in dfs: # df = [box or pose, df for set 1, df for set 2]
+    for df in dfs: # df = ['handbox' or 'handpose', df for set 1, df for set 2]
         cl = correlate(df[0].corr(), df[1].corr()) # Calculate correlation matrix between video sets 1 and 2's dissimilarity matrices
-        print('Correlation for body pose and hand {} features between set 1 and 2 = {}'.format(df[2], cl.mean()))
+        print('Correlation for body pose and {} features between set 1 and 2 = {}'.format(df[2], cl.mean()))
         for m in methods:
             for i in range(2):
                 order = plot_heir_cluster(df[i].T, m, df[2], i+1)
