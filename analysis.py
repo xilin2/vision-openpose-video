@@ -80,7 +80,7 @@ if __name__ == "__main__":
     hand_box = scipy.io.loadmat('vids_set_hand.mat')
     hand_pose = scipy.io.loadmat('vids_set_fingers.mat')
     xls = pd.ExcelFile('vidnamekey.xlsx')
-
+    
     # Delete extra dictionary keys
     del body['__header__']; del hand_box['__header__']; del hand_pose['__header__']
     del body['__version__']; del hand_box['__version__']; del hand_pose['__version__']

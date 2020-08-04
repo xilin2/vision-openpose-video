@@ -234,9 +234,9 @@ def draw_hand_points(canvas, points):
 
 # added by Xilin for exp2
 def draw_handbox(canvas, hand_data):
-    for x, y, w, h in hand_data:
-        color = (255, 0, 255)
-        cv2.rectangle(canvas, (x, y), (x + w, y + h), color, 1)
+    for i, (x, y, w, h) in enumerate(hand_data):
+        color = [(255, 0, 255), (255, 0, 0)]
+        cv2.rectangle(canvas, (x, y), (x + w, y + h), color[i], 1)
     return canvas
 
 # added by Xilin for exp2

@@ -50,13 +50,13 @@ def detect_hands(mat, showim=False):
             cv2.rectangle(mat, (x, y), (x + w, y + h), color, 1)
             text = "%s (%s)" % (name, round(confidence, 2))
             cv2.putText(mat, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.25, color, 1)
+                        0.5, color, 1)
 
             cv2.imwrite("export.jpg", mat)
 
             # show the output image
             cv2.imshow('image', mat)
-            cv2.imwrite('images/test.png', mat)
+            #cv2.imwrite('images/test.png', mat)
 
             cv2.waitKey(0)
 
@@ -66,5 +66,5 @@ def detect_hands(mat, showim=False):
     return return_list
     
 if __name__ == "__main__":
-    mat = cv2.imread('test_images/test4.png')
+    mat = cv2.imread('test_images/test5.png')
     detect_hands(mat, showim=True)
