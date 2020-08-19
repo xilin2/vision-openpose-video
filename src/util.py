@@ -239,6 +239,23 @@ def draw_handbox(canvas, hand_data):
         cv2.rectangle(canvas, (x, y), (x + w, y + h), color[i], 1)
     return canvas
 
+def draw_face(canvas, shape):
+    
+    face_frame = shape[:17]; left_brow = shape[22:27]; right_brow = shape[17:22]; nose_bridge = shape[27:31]; nostrils = shape[31:36]; left_eye = shape[42:48]; right_eye = shape[36:42]; outer_lip = shape[48:60]; inner_lip = shape[60:]
+    line_sections = [face_frame, left_brow, right_brow, nose_bridge, nostrils]
+    shape_sections = [right_eye, left_eye, outer_lip, inner_lip]
+    
+    for sec in line_sections:
+        for i in range(len(sec)-1):
+            cv2.line(canvas, tuple(sec[i]), tuple(sec[i+1]), (255,255,255), thickness=2)
+    for sec in shape_sections:
+        for i in range(-1,len(sec)-1):
+            cv2.line(canvas, tuple(sec[i]), tuple(sec[i+1]), (255,255,255), thickness=2)
+    
+    for i, (x, y) in enumerate(shape):
+        cv2.circle(canvas, (x, y), 2, (255, 255, 255), -1)
+    return canvas
+
 # added by Xilin for exp2
 # reorder hands from L to R
 def reorder_hands_L_R(final_points, detect_hand_pose):
