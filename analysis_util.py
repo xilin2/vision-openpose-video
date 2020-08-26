@@ -16,30 +16,31 @@ def get_trajectories(vid_data):
     n = 26 # number of trajectories / points describing each video
     
     trajs = [[] for i in range(n)] # empty array to store 26 trajectories, each with 75 values
-    traj_incl_0 = [[] for i in range(n)] # empty array to store un-cleaned trajectories array
-    separated_by_frame = [vid_data[i:i+2*n] for i in range(0, 75*n*2, n*2)] # separates into 75 frames, each with 26*2 = 52 values
+    traj_incl_0 = [[] for i in range(n)] # empty array to store un-cleaned trajectories array (eg. still has (0,0) points)
+    separated_by_frame = [vid_data[i:i+2*n] for i in range(0, 75*n*2, n*2)] # separates vid_data into 75 frames, each with 26*2 = 52 values
     for i in range(len(separated_by_frame)): # separates each frame into 26 points of (x,y)
         points = [separated_by_frame[i][j:j+2] for j in range(0, n*2, 2)]
         separated_by_frame[i] = points
     for frame in separated_by_frame: # runs through each frame, separating the points into their trajectories
         for i in range(n):
             traj_incl_0[i].append(frame[i])
-    for i, tr in enumerate(traj_incl_0): # tr = traj of a single point
+    for i, tr in enumerate(traj_incl_0): # tr = traj of a single point (len=75)
         for j, pnt in enumerate(tr):
-            if all(coord == 0 for coord in pnt):
-                if j == 0: # first point in trajectory
+            if all(coord == 0 for coord in pnt): # point = (0,0). We want to prevent misshapen trajectories due to the numerous (0,0)s scattered throughout.
+                if j == 0: # if first point is (0,0), then set point to first non-zero point in trajectory
                     non_zeros = [p for p in tr if any(el != 0 for el in p)]
                     if len(non_zeros) == 0:
                         trajs[i].append([0,0])
                     else:
                         trajs[i].append(non_zeros[0])
-                else:
+                else: # if not first point, set point to value of previous point
                     trajs[i].append(trajs[i][j-1])
             else:
                 trajs[i].append(pnt)
     
     return trajs
-    
+
+# Takes two matrices A and B. Finds the Procrustes distance using sqrt(sum((A-B)^2))
 def find_procrustes_distance(mtx1, mtx2):
     squared_distances = []
     for i in range(len(mtx1)):
@@ -47,6 +48,7 @@ def find_procrustes_distance(mtx1, mtx2):
         squared_distances.append(s)
     return math.sqrt(sum(squared_distances))
 
+# Combines body and hand datasets into one dataset, with hand data appended onto the end of each frame.
 def combine_body_hand(body, hand):
 
     comb_data_1 = {}; comb_data_2 = {}
@@ -60,6 +62,7 @@ def combine_body_hand(body, hand):
                 
     return comb_data_1, comb_data_2
 
+# Converts (x,y,w,h) hand box to set of 4 coordinates
 def convert_hand_to_coord(hand):
     coords = []
     coords.append(hand[0]); coords.append(hand[1]) #URH
@@ -67,7 +70,8 @@ def convert_hand_to_coord(hand):
     coords.append(hand[0]+hand[2]); coords.append(hand[1]) #ULH
     coords.append(hand[0]+hand[2]); coords.append(hand[1]+hand[3]) #LLH
     return coords
-    
+
+# Returns averaged hands
 def average_hands(video):
     
     avgd = [[] for i in range(16)]
@@ -85,6 +89,7 @@ def average_hands(video):
 
     return avgd
     
+# Returns averaged body
 def average_body(video):
     
     avgd = [[] for i in range(len(video[0]))]
@@ -119,10 +124,12 @@ def clean_body(video):
                 continue
             clnd[j].append(val)
     return clnd
-    
+
+#
 def hold_pairs(hold, matrix):
     held_values = []
     vector = []
+    # Moves row by row through top triangle of distance matrix. Rows get shorter and shorter as loop travels down the triangle.
     for i in range(len(matrix)):
         for j in range(i+1,len(matrix)):
             if i is hold or j is hold:
