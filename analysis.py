@@ -4,8 +4,6 @@ import scipy.io
 import pandas as pd
 import os
 
-import matplotlib.pyplot as plt
-
 import analysis_util as util
 
 from sklearn.datasets import load_iris
@@ -21,148 +19,209 @@ from sklearn.linear_model import ElasticNet
 
 from pdb import set_trace
 
-#average_data = False; original_data = False; procrustes_dist = False
-use_PCA = False; reg_regression = False; error_bar = False; rel = False; wilc = False
-models = []
+'''Class which loads, simplifies, and performs analyses on pose and behavioral data'''
+class BehavioralPoseDataAnalysis():
 
-args = sys.argv[1:]
-
-for arg in args:
-    if arg == 'avg':
-        models.append('avg')
-    elif arg == 'orig':
-        models.append('orig')
-    elif arg == 'pro':
-        models.append('pro')
-    elif arg.lower() == 'pca':
-        use_PCA = True
-    elif arg == 'reg':
-        reg_regression = True
-    elif arg == 'err_bar':
-        error_bar = True
-    elif arg == 'rel':
-        rel = True
-    elif arg == 'wilc':
-        wilc = True
-    else:
-        print('\'{}\' argument not recognized. Valid arguments are \'avg\', \'orig\', \'pro\', \'pca\', \'reg\', \'rel\', \'err_bar\', and \'err_bar\''.format(arg))
-        sys.exit()
-
-#label = 'empty'
-#methods = ['complete', 'average', 'weighted', 'ward']
-
-# Load feature data from files into dictionary
-#    body_og = scipy.io.loadmat('vids_set_body.mat')
-#    hand_box_og = scipy.io.loadmat('vids_set_hand.mat')
-body = scipy.io.loadmat('vids_body_new_track.mat')
-hand = scipy.io.loadmat('vids_hand_new_track.mat')
-
-# Load name data
-xls = pd.ExcelFile('vidnamekey.xlsx')
-
-# Load behavioral data
-goals = scipy.io.loadmat('data/GoalSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
-intuitive_actions = scipy.io.loadmat('data/IntuitiveActionSim.mat')['IntuitiveSimilarity'][0][0][1][0][0][1]
-movement = scipy.io.loadmat('data/MovementSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
-visual = scipy.io.loadmat('data/VisualSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
-
-behavioral_data = {'Visual': visual, 'Movement': movement, 'Goals': goals, 'Intuitive': intuitive_actions}
-
-# Delete extra dictionary keys
-del body['__header__']; del hand['__header__']
-del body['__version__']; del hand['__version__']
-del body['__globals__']; del hand['__globals__']
-
-# Create DataFrame of action names
-set1_names =  xls.parse(xls.sheet_names[0])
-set2_names =  xls.parse(xls.sheet_names[1])
-names = pd.concat([set1_names, set2_names])
-
-# Error bar plot setup
-if error_bar:
-    fig, ax = plt.subplots()
-    labels = ['', 'Avg-Visual', 'Avg-Movement', 'Avg-Goals', 'Pro-Visual', 'Pro-Movement', 'Pro-Goals']
-    ax.set_ylabel('Correlation')
-    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies (no absolute value)')
-    ax.axhline(y=0, color='black')
-    x_pos = 1
-
-for model in models:
-
-    ''' Data simplification '''
-
-    orgd_body = {}; orgd_hand = {}
-
-    # Unravel complete data
+    def __init__(self, body_file, hand_file, xls_path, model, set_num, behaviors=None):
+    
+        body, hand, set1_names, set2_names = self.load_pose_data(body_file, hand_file, xls_file)
+        if behaviors:
+            self.behavioral_data = self.load_behavioral_data(behaviors)
+        self.model = model
+        self.data_dict, data = self.simplify_data(body, hand, set1_names, set2_names, set_num)
+        self.data = data[0]; self.names = data[1]
+    
+    '''
+    Loads pose and video data. Returns body, hand, and video name data as dictionaries.
+    '''
+    def load_pose_data(self, body_file, hand_file, xls_file):
         
-    # Average data
-    if model == 'avg': # Runs Average in loop 0
-    #elif average_data: <-- this would typically be the if statement
-        for key in body:
-            orgd_body[key] = util.average_body(util.clean_body(body[key]))
-            orgd_hand[key] = util.average_hands(util.clean_hands(hand[key]))
+        body = scipy.io.loadmat(body_file)
+        hand = scipy.io.loadmat(hand_file)
+        xls = pd.ExcelFile(xls_file)
+        
+        # Delete extra dictionary keys
+        del body['__header__']; del hand['__header__']
+        del body['__version__']; del hand['__version__']
+        del body['__globals__']; del hand['__globals__']
+        
+        set1_names =  xls.parse(xls.sheet_names[0])
+        set2_names =  xls.parse(xls.sheet_names[1])
+        
+        return body, hand, set1_names, set2_names
+    
+    '''
+    Loads requested behavioral data. Stores data in dictionary with keys as the behavioral category.
+    '''
+    def load_behavioral_data(self, behaviors):
+        
+        behavioral_data = {}
+        for b in behaviors:
+            if b == 'goals':
+                behavioral_data['Goals'] =  scipy.io.loadmat('data/GoalSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
+            elif b == 'intuitive':
+                behavioral_data['Intuitive'] = scipy.io.loadmat('data/IntuitiveActionSim.mat')['IntuitiveSimilarity'][0][0][1][0][0][1]
+            elif b == 'movement':
+                behavioral_data['Movement'] = scipy.io.loadmat('data/MovementSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
+            elif b == 'visual':
+                behavioral_data['Visual'] =  scipy.io.loadmat('data/VisualSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
 
-    # Procrustes -- Clean data to remove ids, scores, and w/h measurement
-    elif model == 'pro': # Runs Procrustes in loop 1
-        for key in body:
-            orgd_body[key] = np.ravel(util.clean_body(body[key])).tolist()
-            orgd_hand[key] = np.ravel(util.clean_hands(hand[key])).tolist()
-          
-    # Unravel complete data
-    else:
-        for key in body:
-            orgd_body[key] = []; orgd_hand[key] = []
-            for frame_index in range(len(body[key])):
-                for el in body[key][frame_index]:
-                    orgd_body[key].append(el)
-                for el in hand[key][frame_index]:
-                    orgd_hand[key].append(el)
+        return behavioral_data
+    
+    '''
+    Modifies data according to the data's purpose. The three options are to average the data, remove extraneous information (such as score, ID) and convert hand box data (x,y,w,h) to 4 coordinates, and to simply unravel all data. Returns a combined hand and body data set.
+    '''
+    def simplify_data(self, body, hand, set1_names, set2_names, set_num):
+    
+        orgd_body = {}; orgd_hand = {}
+    
+        # Averages coordinates across 75 frames. Each video will have 26 values (18 for body, 8 for hand)
+        if self.model == 'avg':
+            for key in body:
+                orgd_body[key] = util.average_body(util.clean_body(body[key]))
+                orgd_hand[key] = util.average_hands(util.clean_hands(hand[key]))
 
-    # Combine body and hand dictionaries
-    comb_data_1, comb_data_2 = util.combine_body_hand(orgd_body, orgd_hand)
+        # Used for Procrustes, converts data set to coordinates-only data. Saves hands video data set, organized by frame and with hand box data (x,y,w,h) converted to four coordinates. Saves body video data set, organized by frame and with score and ID removed). Each of 75 frames will have 26 values.
+        elif self.model == 'pro':
+            for key in body:
+                orgd_body[key] = np.ravel(util.clean_body(body[key])).tolist()
+                orgd_hand[key] = np.ravel(util.clean_hands(hand[key])).tolist()
+              
+        # Unravel data under each dictionary key.
+        else:
+            for key in body:
+                orgd_body[key] = []; orgd_hand[key] = []
+                for frame_index in range(len(body[key])):
+                    for el in body[key][frame_index]:
+                        orgd_body[key].append(el)
+                    for el in hand[key][frame_index]:
+                        orgd_hand[key].append(el)
 
-    # Reliabilities
-    if rel:
-        print('Getting reliabilities... may take a while')
-        reliabilities = util.get_split_half_reliabilities(1000, comb_data_1)
+        # Combine body and hand dictionaries
+        comb_data_1, comb_data_2 = util.combine_body_hand(orgd_body, orgd_hand)
+        
+        if set_num == 1:
+            return comb_data_1, util.to_df(comb_data_1, set1_names)
+        else:
+            return comb_data_2, util.to_df(comb_data_2, set2_names)
+    
+    '''
+    Estimate and prints split-half-reliability of dataset. Repeats reliability test 1000 times and averages results.
+    '''
+    def get_split_half_reliabilities(self):
+    
+        print('Printing reliabilities... may take a while')
+        reliabilities = util.get_split_half_reliabilities(1000, self.data)
         #    for el in sorted(reliabilities.items(), key=lambda x:x[1]):
         #        print(el)
         values_only = [reliabilities[i] for i in reliabilities]
         print('Reliability mean: {}'.format(np.mean(values_only)))
         print('Reliability median: {}'.format(np.median(values_only)))
     
-
-    # Create DataFrames corresponding to different video sets and hand data sets
-    #print('Creating dataframes')
-    body_and_box_df_1, actions_1 = util.to_df(comb_data_1, set1_names)
-    body_and_box_df_2, actions_2 = util.to_df(comb_data_2, set2_names)
-    dfs = [[body_and_box_df_1, body_and_box_df_2, 'handbox']]
-
-    if use_PCA:
-        scaler = MinMaxScaler()
-        data_rescaled = scaler.fit_transform(body_and_box_df_1.T)
-        pca = PCA(n_components = 0.95)
-        pca.fit(data_rescaled)
-        reduced = pca.transform(data_rescaled)
-        predictors = pd.DataFrame(reduced, index=actions_1)
-    else:
-        predictors = body_and_box_df_1.T
-
-    ''' Get distance matrices '''
-
-    if model == 'pro':
-    #if procrustes_dist:
+    '''
+    Uses either regularized or linear regression to cross-validate pose data and behavioral data. Pose data is organized into predictors  of dissimilarity matrices of size (60, 60). Prints the mean of the prediction accuracies, and returns a dictionary of the arrays of prediction accuracies organized by behavioral category.
+    '''
+    def cross_validation(self, method=None, use_PCA=False):
+            
+        predictors = self.get_predictors(use_PCA)
         
+        # Creates array of dissimilarity matrices of pose data to be used as train/test data
+        if self.model == 'pro':
+            predictors_matrix = self.construct_procrustes_matrices(predictors)
+        else:
+            predictors_matrix = self.construct_distance_matrices(predictors)
+            
+        print('Cross-validation results for {}'.format(self.model))
+
+        scores_for_behavior = {} # Stores scores array for each behavioral data category analyzed
+        
+        for behavior in self.behavioral_data:
+            
+            # Initializes regression net
+            if method == 'reg':
+                alpha = 0.05
+                net = ElasticNet(alpha=alpha)
+            else:
+                net = LinearRegression()
+            
+            # Creates array of dissimilarity matrices of behavioral data to be used as train/target data
+            judgements = np.ravel(zscore(self.behavioral_data[behavior]))
+            judgements_matrix = squareform(judgements)
+            
+            abs_scores = []
+            scores = []
+            
+            # Cycles through each video, obtaining prediction accuracies
+            for i in range(60):
+                behavior_train, target = util.hold_pairs(i, judgements_matrix)
+                feature_train = []; feature_test = []
+                # Appends train and test data from each predictor onto arrays
+                for j, pred in enumerate(predictors_matrix):
+                    tr, te = util.hold_pairs(j, pred)
+                    feature_train.append(tr); feature_test.append(te)
+                net.fit(np.transpose(feature_train), np.transpose(behavior_train))
+                predicted = net.predict(np.transpose(feature_test))
+                score = pearsonr(np.ravel(predicted), np.ravel(target))[0]
+                scores.append(score)
+                abs_scores.append(abs(score))
+            
+            scores_for_behavior[behavior] = scores
+            prediction_accuracy = np.mean(scores)
+            abs_prediction_accuracy = np.mean(abs_scores)
+            
+            print('Average prediction accuracy for {} similarity: {}'.format(behavior, prediction_accuracy))
+            
+        print('----------')
+        
+        return scores_for_behavior
+    
+    '''
+    Returns either a DataFrame of PCA 0.95 data or a DataFrame of the original data. Unless the model used is Procrustes, these predictors will be used to construct the dissimilarity matrices.
+    '''
+    def get_predictors(self, use_PCA):
+    
+        if use_PCA:
+            scaler = MinMaxScaler()
+            data_rescaled = scaler.fit_transform(self.data.T)
+            pca = PCA(n_components = 0.95)
+            pca.fit(data_rescaled)
+            reduced = pca.transform(data_rescaled)
+            predictors = pd.DataFrame(reduced, index=actions_1)
+        else:
+            predictors = self.data.T
+        
+        return predictors
+    
+    '''
+    Constructs dissimilarity matrice using the squared euclidean distance between values for each predictor in each video. Return an array of dissimilarity matrices of len = number of predictors.
+    '''
+    def construct_distance_matrices(self, predictors):
+    
+        predictors_matrix = [] # stores dissimilarity matrices
+        for i in range(predictors.shape[1]): # cycle through each predictor
+            values = [[val] for val in predictors[predictors.columns[i]].tolist()]
+            distance_vector = pdist(values, metric='sqeuclidean')
+            distance_vector = zscore(distance_vector)
+            distance_matrix = squareform(distance_vector)
+            predictors_matrix.append(distance_matrix)
+        
+        return predictors_matrix
+    
+    '''
+    Constructs dissimilarity matrice by finding the distance between the trajectory of a point in one video, and the Procrustes transformation of the same point in another video. Returns an array of dissimilarity matrices of len = 26 (18 body points/trajectories, 8 hand box points)
+    '''
+    def construct_procrustes_matrices(self, predictors):
+    
         print('Calculating Procrustes distances... may take a while (~1 min)')
         
         n = 26 # number of trajectories / points describing each video
         trajectories = {}
-            
-        # Get n=26 trajectory sets for all videos
-        for video in comb_data_1:
-            trajectories[video] = util.get_trajectories(comb_data_1[video])
         
-        # Construct dissimilarity matrix based on average distance between two videos' 26 Procrustes transformed trajectories
+        # Get n=26 trajectory sets for all videos
+        for video in self.data_dict:
+            trajectories[video] = util.get_trajectories(self.data_dict[video])
+        
+        # Construct dissimilarity matrix based on average distance between two videos' 26 Procrustes transformed trajectories.
         predictors_matrix = [] # stores dissimilarity matrices
         for k in range(n): # Cycles through each of 26 trajectories
             distance_for_feature = [[] for m in range(60)] # distance matrix to later be added to predictors_matrix
@@ -180,7 +239,7 @@ for model in models:
                         traj1[0] = [traj1[0][0]-0.01, traj1[0][1]-0.01]
                     if traj2.count(traj2[0]) == len(traj2):
                         traj2[0] = [traj2[0][0]-0.01, traj2[0][1]-0.01]
-                        
+                    
                     mtx1_1, mtx2_1, disp = procrustes(traj1, traj2)
                     mtx1_2, mtx2_2, disp = procrustes(traj2, traj1)
                     avg_dist.append(util.find_procrustes_distance(mtx1_1, mtx2_1))
@@ -190,117 +249,62 @@ for model in models:
             distance_for_feature = zscore(squareform(distance_for_feature))
             distance_for_feature = squareform(distance_for_feature)
             predictors_matrix.append(distance_for_feature)
-
-    # Construct z-scored dissimilarity matrices for each predictor
-    else:
-        predictors_matrix = [] # stores dissimilarity
-        for i in range(predictors.shape[1]): # cycle through each predictor
-            values = [[val] for val in predictors[predictors.columns[i]].tolist()]
-            distance_vector = pdist(values, metric='sqeuclidean')
-            distance_vector = zscore(distance_vector)
-            distance_matrix = squareform(distance_vector)
-            predictors_matrix.append(distance_matrix)
-
-    ''' Cross-Validation '''
-
-    print('Cross-validation results for {}'.format(model))
-
-    scores_for_behavior = {}
+            
+        return predictors_matrix
     
-    for behavior in behavioral_data:
-        
-        if reg_regression:
-            alpha = 0.05
-            net = ElasticNet(alpha=alpha)
-        else:
-            net = LinearRegression()
-        
-        judgements = np.ravel(zscore(behavioral_data[behavior]))
-        judgements_matrix = squareform(judgements)
-        
-        abs_scores = []
-        scores = []
-        
-        # Cycles through each video, obtaining prediction accuracies
-        for i in range(60):
-            behavior_train, target = util.hold_pairs(i, judgements_matrix)
-            feature_train = []; feature_test = []
-            # Appends train and test data from each predictor onto arrays
-            for j, pred in enumerate(predictors_matrix):
-                tr, te = util.hold_pairs(j, pred)
-                feature_train.append(tr); feature_test.append(te)
-            net.fit(np.transpose(feature_train), np.transpose(behavior_train))
-            predicted = net.predict(np.transpose(feature_test))
-            score = pearsonr(np.ravel(predicted), np.ravel(target))[0]
-            scores.append(score)
-            abs_scores.append(abs(score))
-        
-        scores_for_behavior[behavior] = scores
-        prediction_accuracy = np.mean(scores)
-        abs_prediction_accuracy = np.mean(abs_scores)
-        
-        print('Average prediction accuracy for {} similarity: {}'.format(behavior, prediction_accuracy))
-        #print('Median prediction accuracy for {} similarity: {}'.format(behavior, np.percentile(scores,50)))
-        #print('Average abs prediction accuracy for {} similarity: {}'.format(behavior, abs_prediction_accuracy))
-        
-        # Error bar chart plotting
-        # Could probably come up with or find a cleaner way to plot these
-        if error_bar:
-            bar_middle = 0.5*(np.percentile(scores,25) + np.percentile(scores,75))
-            bar_height = np.percentile(scores,75) - np.percentile(scores,25)
-            median = np.percentile(scores,50)
-
-            if x_pos < 4:
-                color='black'
-            else:
-                color='green'
-                
-            ax.barh(y=bar_middle, height=bar_height, width=0.5, left=x_pos-0.25, color='white', edgecolor=color)
-            ax.plot([x_pos-0.245, x_pos+0.245], [median, median], marker=None, c=color, linewidth=1)
-            ax.plot([x_pos, x_pos], [min(scores), max(scores)], marker=None, c=color, linestyle='dashed', linewidth=1, zorder=0)
-            ax.plot([x_pos-.12, x_pos+.12], [min(scores), min(scores)], marker=None, c=color, linewidth=1)
-            ax.plot([x_pos-.12, x_pos+.12], [max(scores), max(scores)], marker=None, c=color, linewidth=1)
-            ax.plot([x_pos-.245, x_pos+.245], [prediction_accuracy, prediction_accuracy], c='red', marker=None, linewidth=1)
-            x_pos += 1
-
-            #            ax.errorbar(x=x_pos, y=median, yerr=[[lower_error], [upper_error]], c='black', fmt='_')
+    '''
+    Performs and prints results of Wilcoxon test on prediction accuracy scores.
+    '''
+    def wilcoxon_test(self, scores):
     
-    if wilc:
-        print('Wilcoxon results for {} model'.format(model))
-        for behavior in scores_for_behavior:
-            print('{} similarity: {}'.format(behavior, wilcoxon(scores_for_behavior[behavior], alternative='greater')))
-        print('Two-Sided Movement and Visual Similarity: {}'.format(wilcoxon(scores_for_behavior['Visual'], scores_for_behavior['Movement'], alternative='two-sided')))
-        print('Two-Sided Goals and Movement Similarity: {}'.format(wilcoxon(scores_for_behavior['Movement'], scores_for_behavior['Goals'], alternative='two-sided')))
-    
-    print('----------')
+        print('Wilcoxon results for {} model'.format(self.model))
+        for behavior in scores:
+            print('{} similarity: {}'.format(behavior, wilcoxon(scores[behavior], alternative='greater')))
+        print('Two-Sided Movement and Visual Similarity: {}'.format(wilcoxon(scores['Visual'], scores['Movement'], alternative='two-sided')))
+        print('Two-Sided Goals and Movement Similarity: {}'.format(wilcoxon(scores['Movement'], scores['Goals'], alternative='two-sided')))
+            
+        print('----------')
 
-# Error bar chart display
-if error_bar:
-    ax.set_xticks(np.arange(x_pos))
-    #ax.set_xticks([0, 0.5, 1.5])
-    ax.set_xticklabels(labels)
-    plt.show()
-
-# Analysis requiring unraveled frame data
-# Plots
-'''
-dir = '{}_plots'.format(label)
-if not os.path.exists(dir):
-    os.makedirs(dir)
-
-for df in dfs: # df = ['handbox' or 'handpose', df for set 1, df for set 2]
+if __name__ == '__main__':
     
-    cl = correlate(df[0].corr(), df[1].corr()) # Calculate correlation matrix between video sets 1 and 2's dissimilarity matrices
-    # n = df[0].corrwith(df[1], axis=0)
+    body_file = 'vids_body_new_track.mat'
+    hand_file = 'vids_hand_new_track.mat'
+    xls_file = 'vidnamekey.xlsx'
     
-    #print('Kendall\'s tau for body pose and {} features between set 1 and 2 = {}'.format(df[2], kendalltau(arr_set_1, arr_set_2)[0]))
-    print('Correlation for body pose and {} features between set 1 and 2 = {}'.format(df[2], cl.mean()))
+    complete_scores = {}
     
+    for model in ['avg', 'pro']:
+        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model, 1, ['visual', 'movement', 'goals'])
+        scores = analysis.cross_validation(method='reg')
+        analysis.wilcoxon_test(scores)
+        complete_scores[model] = scores
+    
+    util.plot_error_bar(complete_scores)
+    
+    # Analysis requiring unraveled frame data
     # Plots
-    for m in methods:
-        for i in range(2):
-            order = util.plot_heir_cluster(df[i].T, m, dir, i+1)
-            hierarchy = [list(df[i].columns)[j] for j in order]
-            sorted = df[i].reindex(columns=hierarchy) # Arrange DF according to hierarchical clustering solution
-            util.plot_heatmap(sorted, m, dir, i+1) # Plot correlation heatmap of sorted DF
-'''
+    '''
+    
+    label = 'empty'
+    methods = ['complete', 'average', 'weighted', 'ward']
+    
+    dir = '{}_plots'.format(label)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    for df in dfs: # df = ['handbox' or 'handpose', df for set 1, df for set 2]
+        
+        cl = correlate(df[0].corr(), df[1].corr()) # Calculate correlation matrix between video sets 1 and 2's dissimilarity matrices
+        # n = df[0].corrwith(df[1], axis=0)
+        
+        #print('Kendall\'s tau for body pose and {} features between set 1 and 2 = {}'.format(df[2], kendalltau(arr_set_1, arr_set_2)[0]))
+        print('Correlation for body pose and {} features between set 1 and 2 = {}'.format(df[2], cl.mean()))
+        
+        # Plots
+        for m in methods:
+            for i in range(2):
+                order = util.plot_heir_cluster(df[i].T, m, dir, i+1)
+                hierarchy = [list(df[i].columns)[j] for j in order]
+                sorted = df[i].reindex(columns=hierarchy) # Arrange DF according to hierarchical clustering solution
+                util.plot_heatmap(sorted, m, dir, i+1) # Plot correlation heatmap of sorted DF
+    '''

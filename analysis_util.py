@@ -10,13 +10,13 @@ from scipy.stats import zscore, pearsonr
 
 from pdb import set_trace
 
-# Returns a set of 26 trajectories (one for each point describing a pose), each with 75 values.
+# Returns a set of 26 trajectories (one for each point describing a pose), each with 75 values. (0,0) points are set to the value of the previous point so to prevent misshapen trajectories due to the numerous (0,0)s scattered throughout.
 def get_trajectories(vid_data):
     
     n = 26 # number of trajectories / points describing each video
     
     trajs = [[] for i in range(n)] # empty array to store 26 trajectories, each with 75 values
-    traj_incl_0 = [[] for i in range(n)] # empty array to store un-cleaned trajectories array (eg. still has (0,0) points)
+    traj_incl_0 = [[] for i in range(n)] # empty array to store un-modified trajectories array (eg. still has (0,0) points)
     separated_by_frame = [vid_data[i:i+2*n] for i in range(0, 75*n*2, n*2)] # separates vid_data into 75 frames, each with 26*2 = 52 values
     for i in range(len(separated_by_frame)): # separates each frame into 26 points of (x,y)
         points = [separated_by_frame[i][j:j+2] for j in range(0, n*2, 2)]
@@ -26,7 +26,7 @@ def get_trajectories(vid_data):
             traj_incl_0[i].append(frame[i])
     for i, tr in enumerate(traj_incl_0): # tr = traj of a single point (len=75)
         for j, pnt in enumerate(tr):
-            if all(coord == 0 for coord in pnt): # point = (0,0). We want to prevent misshapen trajectories due to the numerous (0,0)s scattered throughout.
+            if all(coord == 0 for coord in pnt): # point = (0,0)
                 if j == 0: # if first point is (0,0), then set point to first non-zero point in trajectory
                     non_zeros = [p for p in tr if any(el != 0 for el in p)]
                     if len(non_zeros) == 0:
@@ -62,7 +62,7 @@ def combine_body_hand(body, hand):
                 
     return comb_data_1, comb_data_2
 
-# Converts (x,y,w,h) hand box to set of 4 coordinates
+# Converts (x,y,w,h) hand box to set of 4 corner coordinates
 def convert_hand_to_coord(hand):
     coords = []
     coords.append(hand[0]); coords.append(hand[1]) #URH
@@ -71,7 +71,7 @@ def convert_hand_to_coord(hand):
     coords.append(hand[0]+hand[2]); coords.append(hand[1]+hand[3]) #LLH
     return coords
 
-# Returns averaged hands
+# Averages hand box coordinates across 75 frames. Ignores hand boxes which are (0,0,0,0) which represent an undetected hand. Each frame contains 8 hand box coordinates.
 def average_hands(video):
     
     avgd = [[] for i in range(16)]
@@ -89,7 +89,7 @@ def average_hands(video):
 
     return avgd
     
-# Returns averaged body
+# Averages body coordinates across 75 frames. Ignores body points which are (0,0) which represent an undetected point. Each frame contains 18 body coordinates.
 def average_body(video):
     
     avgd = [[] for i in range(len(video[0]))]
@@ -106,7 +106,7 @@ def average_body(video):
 
     return avgd
     
-# Returns cleaned hands video, organized by frame
+# Returns hands video data set, organized by frame and with hand box data (x,y,w,h) converted to four coordinates (len=75).
 def clean_hands(video):
     clnd = [[] for i in range(len(video))]
     for j, frame in enumerate(video):
@@ -115,7 +115,7 @@ def clean_hands(video):
             clnd[j].append(convert_hand_to_coord(hand))
     return clnd
 
-# Returns cleaned body video, organized by frame
+# Returns body video data set, organized by frame and with score and ID removed (len=75).
 def clean_body(video):
     clnd = [[] for i in range(len(video))]
     for j, frame in enumerate(video):
@@ -125,7 +125,7 @@ def clean_body(video):
             clnd[j].append(val)
     return clnd
 
-#
+# Returns a vector of all pairs that do not include the video index in a dissimilarity matrix, and a vector of all pairs that do include the video index.
 def hold_pairs(hold, matrix):
     held_values = []
     vector = []
@@ -185,6 +185,7 @@ def plot_heatmap(df, met, dir, vid_set_num):
     plt.close()
     return
 
+# Randomly shuffles dataset and correlates first half of shuffled set to second half of shuffled set. Repeats 'num' times. Used to estimate reliability of dataset.
 def get_split_half_reliabilities(num, dataset):
     
     reliabilities = {}
@@ -198,3 +199,43 @@ def get_split_half_reliabilities(num, dataset):
             corr_sum += pearsonr(half1, half2)[0]
         reliabilities[vid] = corr_sum/num
     return reliabilities
+
+# Plots error bar given the data set of prediction accuracy scores from cross-validation.
+def plot_error_bar(scores):
+    
+    set_trace()
+    
+    fig, ax = plt.subplots()
+    labels = ['']
+    for model in scores:
+        for behavior in scores[model]:
+            labels.append('{}-{}'.format(model, behavior))
+    ax.set_ylabel('Correlation')
+    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies')
+    ax.axhline(y=0, color='black')
+    ax.set_xticks(np.arange(len(labels)))
+    ax.axhline(y=0, color='black')
+    ax.set_xticklabels(labels)
+    x_pos = 1
+    
+    colors = ['black', 'blue']
+    
+    for i, model in enumerate(scores):
+        for behavior in scores[model]:
+        
+            s = scores[model][behavior]
+        
+            mean = np.mean(s)
+            bar_middle = 0.5*(np.percentile(s,25) + np.percentile(s,75))
+            bar_height = np.percentile(s,75) - np.percentile(s,25)
+            median = np.percentile(s,50)
+        
+            ax.barh(y=bar_middle, height=bar_height, width=0.5, left=x_pos-0.25, color='white', edgecolor=colors[i])
+            ax.plot([x_pos-0.245, x_pos+0.245], [median, median], marker=None, c=colors[i], linewidth=1)
+            ax.plot([x_pos, x_pos], [min(s), max(s)], marker=None, c=colors[i], linestyle='dashed', linewidth=1, zorder=0)
+            ax.plot([x_pos-.12, x_pos+.12], [min(s), min(s)], marker=None, c=colors[i], linewidth=1)
+            ax.plot([x_pos-.12, x_pos+.12], [max(s), max(s)], marker=None, c=colors[i], linewidth=1)
+            ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
+            x_pos += 1
+    
+    plt.show()
