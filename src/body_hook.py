@@ -73,22 +73,20 @@ class Body(object):
                             hooks.close()
                             
                             features = hooks.output.detach().numpy()
-                            features = features.flatten()
+                            #features = features.flatten()
                             feature_maps[layer] = features
                             
-                            print('Layer {} hooked: {} values'.format(layer, len(features)))
+                            print('Layer {} hooked: {} values'.format(layer, features.shape))
                 
                 except Exception:
                     hooks.close()
                 
                 return feature_maps
             
-            else:
-            
-                with torch.no_grad():
-                    Mconv7_stage6_L1, Mconv7_stage6_L2 = self.model(data) # sends through processing
-                Mconv7_stage6_L1 = Mconv7_stage6_L1.cpu().numpy()
-                Mconv7_stage6_L2 = Mconv7_stage6_L2.cpu().numpy()
+            with torch.no_grad():
+                Mconv7_stage6_L1, Mconv7_stage6_L2 = self.model(data) # sends through processing
+            Mconv7_stage6_L1 = Mconv7_stage6_L1.cpu().numpy()
+            Mconv7_stage6_L2 = Mconv7_stage6_L2.cpu().numpy()
 
             # extract outputs, resize, and remove padding
             # heatmap = np.transpose(np.squeeze(net.blobs[output_blobs.keys()[1]].data), (1, 2, 0))  # output 1 is heatmaps
@@ -268,17 +266,18 @@ class Body(object):
 if __name__ == "__main__":
     body_estimation = Body('../model/body_pose_model.pth')
 
-    test_images = ['images/skater_test.jpeg', 'images/ski.jpg']
+    test_images = ['images/fam1.jpg', 'images/ski2.jpg']
     dicts = []
     for img in test_images:
+    
         oriImg = cv2.imread(img)  # B,G,R order
         dicts.append(body_estimation(oriImg))
+#        candidate, subset = body_estimation(oriImg)
+#        canvas = util.draw_bodypose(oriImg, candidate, subset)
+#        plt.imshow(canvas[:, :, [2, 1, 0]])
+#        plt.show()
     
     for layer in dicts[0]:
-        if len(dicts[0][layer]) != len(dicts[1][layer]):
-            print(layer)
+        print('{}: {}, {}'.format(layer, dicts[0][layer].shape, dicts[1][layer].shape))
         
-        #candidate, subset = body_estimation(oriImg)
-#    canvas = util.draw_bodypose(oriImg, candidate, subset)
-#    plt.imshow(canvas[:, :, [2, 1, 0]])
-#    plt.show()
+        

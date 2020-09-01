@@ -71,7 +71,7 @@ def convert_hand_to_coord(hand):
     coords.append(hand[0]+hand[2]); coords.append(hand[1]+hand[3]) #LLH
     return coords
 
-# Averages hand box coordinates across 75 frames. Ignores hand boxes which are (0,0,0,0) which represent an undetected hand. Each frame contains 8 hand box coordinates.
+# Averages hand box coordinates across 75 frames. Ignores hand boxes which are (0,0,0,0) which represent an undetected hand. Each frame contains 8 hand box coordinates. Returns 8 averaged (x,y) coordinates)
 def average_hands(video):
     
     avgd = [[] for i in range(16)]
@@ -87,9 +87,12 @@ def average_hands(video):
         else:
             avgd[i] = np.mean(avgd[i])
 
+    # separates into corner points (x,y)
+    #avgd = [avgd[i:i+2] for i in range(0, len(avgd), 2)]
+    
     return avgd
     
-# Averages body coordinates across 75 frames. Ignores body points which are (0,0) which represent an undetected point. Each frame contains 18 body coordinates.
+# Averages body coordinates across 75 frames. Ignores body points which are (0,0) which represent an undetected point. Each frame contains 18 body coordinates. Returns 18 averaged (x,y) coordinates)
 def average_body(video):
     
     avgd = [[] for i in range(len(video[0]))]
@@ -103,6 +106,9 @@ def average_body(video):
             avgd[i] = 0
         else:
             avgd[i] = np.mean(avgd[i])
+    
+    # separates into corner points (x,y)
+    #avgd = [avgd[i:i+2] for i in range(0, len(avgd), 2)]
 
     return avgd
     
@@ -203,17 +209,14 @@ def get_split_half_reliabilities(num, dataset):
 # Plots error bar given the data set of prediction accuracy scores from cross-validation.
 def plot_error_bar(scores):
     
-    set_trace()
-    
     fig, ax = plt.subplots()
-    labels = ['']
+    labels = ['','']
     for model in scores:
         for behavior in scores[model]:
-            labels.append('{}-{}'.format(model, behavior))
+            labels.insert(-1,'{}-{}'.format(model, behavior))
     ax.set_ylabel('Correlation')
-    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies')
+    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies (abs val)')
     ax.axhline(y=0, color='black')
-    ax.set_xticks(np.arange(len(labels)))
     ax.axhline(y=0, color='black')
     ax.set_xticklabels(labels)
     x_pos = 1
@@ -237,5 +240,7 @@ def plot_error_bar(scores):
             ax.plot([x_pos-.12, x_pos+.12], [max(s), max(s)], marker=None, c=colors[i], linewidth=1)
             ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
             x_pos += 1
+    
+    ax.set_xticks(np.arange(len(labels)))
     
     plt.show()

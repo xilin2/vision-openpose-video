@@ -19,8 +19,12 @@ from sklearn.linear_model import ElasticNet
 
 from pdb import set_trace
 
-'''Class which loads, simplifies, and performs analyses on pose and behavioral data'''
 class BehavioralPoseDataAnalysis():
+
+    '''
+    Class which loads, simplifies, and performs analyses on pose and
+    behavioral data
+    '''
 
     def __init__(self, body_file, hand_file, xls_path, model, set_num, behaviors=None):
     
@@ -31,10 +35,13 @@ class BehavioralPoseDataAnalysis():
         self.data_dict, data = self.simplify_data(body, hand, set1_names, set2_names, set_num)
         self.data = data[0]; self.names = data[1]
     
-    '''
-    Loads pose and video data. Returns body, hand, and video name data as dictionaries.
-    '''
+    
     def load_pose_data(self, body_file, hand_file, xls_file):
+        
+        '''
+        Loads pose and video data. Returns body, hand, and video name data
+        as dictionaries.
+        '''
         
         body = scipy.io.loadmat(body_file)
         hand = scipy.io.loadmat(hand_file)
@@ -50,10 +57,12 @@ class BehavioralPoseDataAnalysis():
         
         return body, hand, set1_names, set2_names
     
-    '''
-    Loads requested behavioral data. Stores data in dictionary with keys as the behavioral category.
-    '''
     def load_behavioral_data(self, behaviors):
+        
+        '''
+        Loads requested behavioral data. Stores data in dictionary with
+        keys as the behavioral category.
+        '''
         
         behavioral_data = {}
         for b in behaviors:
@@ -68,10 +77,15 @@ class BehavioralPoseDataAnalysis():
 
         return behavioral_data
     
-    '''
-    Modifies data according to the data's purpose. The three options are to average the data, remove extraneous information (such as score, ID) and convert hand box data (x,y,w,h) to 4 coordinates, and to simply unravel all data. Returns a combined hand and body data set.
-    '''
     def simplify_data(self, body, hand, set1_names, set2_names, set_num):
+    
+        '''
+        Modifies data according to the data's purpose. The three options
+        are to average the data, remove extraneous information (such as
+        score, ID) and convert hand box data (x,y,w,h) to 4 coordinates,
+        and to simply unravel all data. Returns a combined hand and body
+        data set.
+        '''
     
         orgd_body = {}; orgd_hand = {}
     
@@ -81,7 +95,11 @@ class BehavioralPoseDataAnalysis():
                 orgd_body[key] = util.average_body(util.clean_body(body[key]))
                 orgd_hand[key] = util.average_hands(util.clean_hands(hand[key]))
 
-        # Used for Procrustes, converts data set to coordinates-only data. Saves hands video data set, organized by frame and with hand box data (x,y,w,h) converted to four coordinates. Saves body video data set, organized by frame and with score and ID removed). Each of 75 frames will have 26 values.
+        # Used for Procrustes, converts data set to coordinates-only data.
+        # Saves hands video data set, organized by frame and with hand box
+        # data (x,y,w,h) converted to four coordinates. Saves body video
+        # data set, organized by frame and with score and ID removed).
+        # Each of 75 frames will have 26 values.
         elif self.model == 'pro':
             for key in body:
                 orgd_body[key] = np.ravel(util.clean_body(body[key])).tolist()
@@ -105,10 +123,12 @@ class BehavioralPoseDataAnalysis():
         else:
             return comb_data_2, util.to_df(comb_data_2, set2_names)
     
-    '''
-    Estimate and prints split-half-reliability of dataset. Repeats reliability test 1000 times and averages results.
-    '''
     def get_split_half_reliabilities(self):
+    
+        '''
+        Estimate and prints split-half-reliability of dataset. Repeats
+        reliability test 1000 times and averages results.
+        '''
     
         print('Printing reliabilities... may take a while')
         reliabilities = util.get_split_half_reliabilities(1000, self.data)
@@ -118,11 +138,16 @@ class BehavioralPoseDataAnalysis():
         print('Reliability mean: {}'.format(np.mean(values_only)))
         print('Reliability median: {}'.format(np.median(values_only)))
     
-    '''
-    Uses either regularized or linear regression to cross-validate pose data and behavioral data. Pose data is organized into predictors  of dissimilarity matrices of size (60, 60). Prints the mean of the prediction accuracies, and returns a dictionary of the arrays of prediction accuracies organized by behavioral category.
-    '''
-    def cross_validation(self, method=None, use_PCA=False):
+    def cross_validation(self, method=None, use_PCA=False, abso=False):
             
+        '''
+        Uses either regularized or linear regression to cross-validate
+        pose data and behavioral data. Pose data is organized into
+        predictors  of dissimilarity matrices of size (60, 60). Prints the
+        mean of the prediction accuracies, and returns a dictionary of the
+        arrays of prediction accuracies organized by behavioral category.
+        '''
+        
         predictors = self.get_predictors(use_PCA)
         
         # Creates array of dissimilarity matrices of pose data to be used as train/test data
@@ -133,7 +158,8 @@ class BehavioralPoseDataAnalysis():
             
         print('Cross-validation results for {}'.format(self.model))
 
-        scores_for_behavior = {} # Stores scores array for each behavioral data category analyzed
+        scores_for_behavior = {} # Stores scores array for each behavioral
+            # data category analyzed
         
         for behavior in self.behavioral_data:
             
@@ -144,30 +170,33 @@ class BehavioralPoseDataAnalysis():
             else:
                 net = LinearRegression()
             
-            # Creates array of dissimilarity matrices of behavioral data to be used as train/target data
+            # Creates array of dissimilarity matrices of behavioral data
+            # to be used as train/target data
             judgements = np.ravel(zscore(self.behavioral_data[behavior]))
             judgements_matrix = squareform(judgements)
             
-            abs_scores = []
+            #abs_scores = []
             scores = []
             
             # Cycles through each video, obtaining prediction accuracies
             for i in range(60):
                 behavior_train, target = util.hold_pairs(i, judgements_matrix)
                 feature_train = []; feature_test = []
-                # Appends train and test data from each predictor onto arrays
+                # Appends train/test data from each predictor onto arrays
                 for j, pred in enumerate(predictors_matrix):
                     tr, te = util.hold_pairs(j, pred)
                     feature_train.append(tr); feature_test.append(te)
                 net.fit(np.transpose(feature_train), np.transpose(behavior_train))
                 predicted = net.predict(np.transpose(feature_test))
                 score = pearsonr(np.ravel(predicted), np.ravel(target))[0]
-                scores.append(score)
-                abs_scores.append(abs(score))
+                if abso:
+                    scores.append(abs(score))
+                else:
+                    scores.append(score)
             
             scores_for_behavior[behavior] = scores
             prediction_accuracy = np.mean(scores)
-            abs_prediction_accuracy = np.mean(abs_scores)
+            #abs_prediction_accuracy = np.mean(abs_scores)
             
             print('Average prediction accuracy for {} similarity: {}'.format(behavior, prediction_accuracy))
             
@@ -175,10 +204,13 @@ class BehavioralPoseDataAnalysis():
         
         return scores_for_behavior
     
-    '''
-    Returns either a DataFrame of PCA 0.95 data or a DataFrame of the original data. Unless the model used is Procrustes, these predictors will be used to construct the dissimilarity matrices.
-    '''
     def get_predictors(self, use_PCA):
+    
+        '''
+        Returns either a DataFrame of PCA 0.95 data or a DataFrame of the
+        original data. Unless the model used is Procrustes, these
+        predictors will be used to construct the dissimilarity matrices.
+        '''
     
         if use_PCA:
             scaler = MinMaxScaler()
@@ -192,14 +224,19 @@ class BehavioralPoseDataAnalysis():
         
         return predictors
     
-    '''
-    Constructs dissimilarity matrice using the squared euclidean distance between values for each predictor in each video. Return an array of dissimilarity matrices of len = number of predictors.
-    '''
     def construct_distance_matrices(self, predictors):
     
+        '''
+        Constructs dissimilarity matrice using the squared euclidean
+        distance between values for each predictor in each video. Return
+        an array of dissimilarity matrices of len = number of predictors.
+        '''
+    
         predictors_matrix = [] # stores dissimilarity matrices
-        for i in range(predictors.shape[1]): # cycle through each predictor
-            values = [[val] for val in predictors[predictors.columns[i]].tolist()]
+        
+        for i in range(0, predictors.shape[1], 2): # cycle through each predictor
+            #values = [[val] for val in  predictors[predictors.columns[i]].tolist()]
+            values = [val for val in  predictors[[i,i+1]].values.tolist()]
             distance_vector = pdist(values, metric='sqeuclidean')
             distance_vector = zscore(distance_vector)
             distance_matrix = squareform(distance_vector)
@@ -207,10 +244,15 @@ class BehavioralPoseDataAnalysis():
         
         return predictors_matrix
     
-    '''
-    Constructs dissimilarity matrice by finding the distance between the trajectory of a point in one video, and the Procrustes transformation of the same point in another video. Returns an array of dissimilarity matrices of len = 26 (18 body points/trajectories, 8 hand box points)
-    '''
     def construct_procrustes_matrices(self, predictors):
+    
+        '''
+        Constructs dissimilarity matrice by finding the distance between
+        the trajectory of a point in one video, and the Procrustes
+        transformation of the same point in another video. Returns an
+        array of dissimilarity matrices of len = 26 (18 body
+        points/trajectories, 8 hand box points)
+        '''
     
         print('Calculating Procrustes distances... may take a while (~1 min)')
         
@@ -221,10 +263,12 @@ class BehavioralPoseDataAnalysis():
         for video in self.data_dict:
             trajectories[video] = util.get_trajectories(self.data_dict[video])
         
-        # Construct dissimilarity matrix based on average distance between two videos' 26 Procrustes transformed trajectories.
+        # Construct dissimilarity matrix based on average distance between
+        # two videos' 26 Procrustes transformed trajectories.
         predictors_matrix = [] # stores dissimilarity matrices
         for k in range(n): # Cycles through each of 26 trajectories
-            distance_for_feature = [[] for m in range(60)] # distance matrix to later be added to predictors_matrix
+            # distance matrix to later be added to predictors_matrix
+            distance_for_feature = [[] for m in range(60)]
             for i, vid1 in enumerate(trajectories):
                 for j, vid2 in enumerate(trajectories):
                     avg_dist = []
@@ -234,7 +278,8 @@ class BehavioralPoseDataAnalysis():
             
                     traj1 = trajectories[vid1][k]; traj2 = trajectories[vid2][k]
                     
-                    # In the case that either trajectory does not contain >1 unique points, modify first point by 0.01
+                    # In the case that either trajectory does not contain
+                    # >1 unique points, modify first point by 0.01
                     if traj1.count(traj1[0]) == len(traj1):
                         traj1[0] = [traj1[0][0]-0.01, traj1[0][1]-0.01]
                     if traj2.count(traj2[0]) == len(traj2):
@@ -252,30 +297,32 @@ class BehavioralPoseDataAnalysis():
             
         return predictors_matrix
     
-    '''
-    Performs and prints results of Wilcoxon test on prediction accuracy scores.
-    '''
     def wilcoxon_test(self, scores):
+    
+        '''
+        Performs and prints results of Wilcoxon test on prediction
+        accuracy scores.
+        '''
     
         print('Wilcoxon results for {} model'.format(self.model))
         for behavior in scores:
             print('{} similarity: {}'.format(behavior, wilcoxon(scores[behavior], alternative='greater')))
-        print('Two-Sided Movement and Visual Similarity: {}'.format(wilcoxon(scores['Visual'], scores['Movement'], alternative='two-sided')))
-        print('Two-Sided Goals and Movement Similarity: {}'.format(wilcoxon(scores['Movement'], scores['Goals'], alternative='two-sided')))
+#        print('Two-Sided Movement and Visual Similarity: {}'.format(wilcoxon(scores['Visual'], scores['Movement'], alternative='two-sided')))
+#        print('Two-Sided Goals and Movement Similarity: {}'.format(wilcoxon(scores['Movement'], scores['Goals'], alternative='two-sided')))
             
         print('----------')
 
 if __name__ == '__main__':
     
-    body_file = 'vids_body_new_track.mat'
-    hand_file = 'vids_hand_new_track.mat'
-    xls_file = 'vidnamekey.xlsx'
+    body_file = 'data/vids_body_new_track.mat'
+    hand_file = 'data/vids_hand_new_track.mat'
+    xls_file = 'data/vidnamekey.xlsx'
     
     complete_scores = {}
     
     for model in ['avg', 'pro']:
-        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model, 1, ['visual', 'movement', 'goals'])
-        scores = analysis.cross_validation(method='reg')
+        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model, 1, ['intuitive'])
+        scores = analysis.cross_validation(method='reg', abso=True)
         analysis.wilcoxon_test(scores)
         complete_scores[model] = scores
     

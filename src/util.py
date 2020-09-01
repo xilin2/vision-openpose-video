@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
+from pdb import set_trace
+
 class Hook():
 
     def __init__(self, module):
@@ -15,6 +17,7 @@ class Hook():
 
     def hook(self, module, input, output):
         self.output = output.clone().detach().requires_grad_(True)
+        self.input = input[0].clone().detach().requires_grad_(True)
 
     def close(self):
         self.hook.remove()
