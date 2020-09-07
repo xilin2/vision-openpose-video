@@ -17,6 +17,9 @@ from scipy.spatial import procrustes
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import ElasticNet
 
+import statsmodels.formula.api as smf
+import seaborn as sns
+
 from pdb import set_trace
 
 class BehavioralPoseDataAnalysis():
@@ -307,10 +310,33 @@ class BehavioralPoseDataAnalysis():
         print('Wilcoxon results for {} model'.format(self.model))
         for behavior in scores:
             print('{} similarity: {}'.format(behavior, wilcoxon(scores[behavior], alternative='greater')))
-#        print('Two-Sided Movement and Visual Similarity: {}'.format(wilcoxon(scores['Visual'], scores['Movement'], alternative='two-sided')))
-#        print('Two-Sided Goals and Movement Similarity: {}'.format(wilcoxon(scores['Movement'], scores['Goals'], alternative='two-sided')))
+        if 'Movement' in scores and 'Visual' in scores:
+            print('Two-Sided Movement and Visual Similarity: {}'.format(wilcoxon(scores['Visual'], scores['Movement'], alternative='two-sided')))
+        if 'Movement' in scores and 'Goals' in scores:
+            print('Two-Sided Goals and Movement Similarity: {}'.format(wilcoxon(scores['Movement'], scores['Goals'], alternative='two-sided')))
             
         print('----------')
+    
+    def ols_reg_comparison(self, scores):
+        
+        '''
+        '''
+        
+        print('OLS regression')
+        
+        df = pd.DataFrame(columns = ['score', 'model_type', 'analysis_type'])
+        
+        # Create dataframe
+        for model_type in scores:
+            for analysis_type in scores[model_type]:
+                for score in scores[model_type][analysis_type]:
+                    df = df.append({'score': score, 'model_type': model_type, 'analysis_type': analysis_type}, ignore_index=True)
+        
+        model = smf.ols(formula='score ~ model_type + analysis_type + model_type:analysis_type', data=df).fit()
+        print model.summary()
+        
+        print('----------')
+        
 
 if __name__ == '__main__':
     
@@ -321,11 +347,12 @@ if __name__ == '__main__':
     complete_scores = {}
     
     for model in ['avg', 'pro']:
-        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model, 1, ['intuitive'])
+        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model, 1, ['visual', 'movement', 'goals'])
         scores = analysis.cross_validation(method='reg', abso=True)
         analysis.wilcoxon_test(scores)
         complete_scores[model] = scores
     
+    analysis.ols_reg_comparison(complete_scores)
     util.plot_error_bar(complete_scores)
     
     # Analysis requiring unraveled frame data
