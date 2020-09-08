@@ -48,19 +48,54 @@ def find_procrustes_distance(mtx1, mtx2):
         squared_distances.append(s)
     return math.sqrt(sum(squared_distances))
 
-# Combines body and hand datasets into one dataset, with hand data appended onto the end of each frame.
+# Combines body and hand datasets into one dataset, with hand data appended onto the end of each frame. Final array is one-dimension
 def combine_body_hand(body, hand):
 
     comb_data_1 = {}; comb_data_2 = {}
+    
     for key in body:
         if key.split('_')[0][-1] == '1':
-            comb_data_1[key] = body[key]
-            comb_data_1[key].extend(hand[key])
+            comb_data_1[key] = []
+            # if data is split into frames
+            if isinstance(body[key][0], (list, np.ndarray)):
+                for i in range(len(body[key])):
+                    comb_data_1[key].extend(body[key][i])
+                    comb_data_1[key].extend(np.ravel(hand[key][i]))
+            else:
+                comb_data_1[key].extend(body[key])
+                comb_data_1[key].extend(hand[key])
         else:
-            comb_data_2[key] = body[key]
-            comb_data_2[key].extend(hand[key])
+            comb_data_2[key] = []
+            if isinstance(body[key][0], (list, np.ndarray)):
+                for i in range(len(body[key])):
+                    comb_data_2[key].extend(body[key][i])
+                    comb_data_2[key].extend(np.ravel(hand[key][i]))
+            else:
+                comb_data_2[key].extend(body[key])
+                comb_data_2[key].extend(hand[key])
                 
     return comb_data_1, comb_data_2
+
+def get_frame_by_frame(body, hand):
+   
+    frame_by_frame_1 = {}; frame_by_frame_2 = {}
+    for key in body:
+       if key.split('_')[0][-1] == '1':
+           frame_by_frame_1[key] = []
+           for i in range(len(body[key])):
+               temp = []
+               temp.extend(body[key][i])
+               temp.extend(np.ravel(hand[key][i]))
+               frame_by_frame_1[key].append(temp)
+       else:
+           frame_by_frame_2[key] = []
+           for i in range(len(body[key])):
+               temp = []
+               temp.extend(body[key][i])
+               temp.extend(np.ravel(hand[key][i]))
+               frame_by_frame_2[key].append(temp)
+    
+    return frame_by_frame_1, frame_by_frame_2
 
 # Converts (x,y,w,h) hand box to set of 4 corner coordinates
 def convert_hand_to_coord(hand):
@@ -192,8 +227,19 @@ def plot_heatmap(df, met, dir, vid_set_num):
     return
 
 # Randomly shuffles dataset and correlates first half of shuffled set to second half of shuffled set. Repeats 'num' times. Used to estimate reliability of dataset.
-def get_split_half_reliabilities(num, dataset):
+def get_split_half_reliabilities(num, data):
     
+    corr_sum = 0
+    for i in range(num):
+        shuffled = random.sample(list(data), len(data))
+        mid = int(len(data)/2)
+        half1 = shuffled[:mid]; half2 = shuffled[mid:2*mid]
+        half1 = np.array(half1, dtype='float').flatten()
+        half2 = np.array(half2, dtype='float').flatten()
+        corr_sum += pearsonr(half1, half2)[0]
+    return corr_sum/num
+    
+    '''
     reliabilities = {}
     for vid in dataset:
         corr_sum = 0
@@ -205,6 +251,7 @@ def get_split_half_reliabilities(num, dataset):
             corr_sum += pearsonr(half1, half2)[0]
         reliabilities[vid] = corr_sum/num
     return reliabilities
+    '''
 
 # Plots error bar given the data set of prediction accuracy scores from cross-validation.
 def plot_error_bar(scores):
@@ -215,7 +262,7 @@ def plot_error_bar(scores):
         for behavior in scores[model]:
             labels.insert(-1,'{}-{}'.format(model, behavior))
     ax.set_ylabel('Correlation')
-    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies (abs val)')
+    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies')
     ax.axhline(y=0, color='black')
     ax.axhline(y=0, color='black')
     ax.set_xticklabels(labels)

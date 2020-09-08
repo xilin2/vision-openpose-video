@@ -29,13 +29,13 @@ class BehavioralPoseDataAnalysis():
     behavioral data
     '''
 
-    def __init__(self, body_file, hand_file, xls_path, model, set_num, behaviors=None):
+    def __init__(self, body_file, hand_file, xls_path, model=None, set_num=1, behaviors=None):
     
         body, hand, set1_names, set2_names = self.load_pose_data(body_file, hand_file, xls_file)
         if behaviors:
-            self.behavioral_data = self.load_behavioral_data(behaviors)
+            self.group_behavioral_data, self.single_behavioral_data = self.load_behavioral_data(behaviors)
         self.model = model
-        self.data_dict, data = self.simplify_data(body, hand, set1_names, set2_names, set_num)
+        self.fbf, self.data_dict, data = self.simplify_data(body, hand, set1_names, set2_names, set_num)
         self.data = data[0]; self.names = data[1]
     
     
@@ -67,18 +67,27 @@ class BehavioralPoseDataAnalysis():
         keys as the behavioral category.
         '''
         
-        behavioral_data = {}
+        group_behavioral_data = {}
+        single_behavioral_data = {}
+        
         for b in behaviors:
             if b == 'goals':
-                behavioral_data['Goals'] =  scipy.io.loadmat('data/GoalSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
+                dat = scipy.io.loadmat('data/GoalSimilarity.mat')['GuidedBehaviorModel'][0][0]
+                group_behavioral_data['Goals'] = dat[1]
+                single_behavioral_data['Goals'] = dat[2]
             elif b == 'intuitive':
-                behavioral_data['Intuitive'] = scipy.io.loadmat('data/IntuitiveActionSim.mat')['IntuitiveSimilarity'][0][0][1][0][0][1]
+                group_behavioral_data['Intuitive'] = scipy.io.loadmat('data/IntuitiveActionSim.mat')['IntuitiveSimilarity'][0][0][1][0][0][1]
             elif b == 'movement':
-                behavioral_data['Movement'] = scipy.io.loadmat('data/MovementSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
+                dat = scipy.io.loadmat('data/MovementSimilarity.mat')['GuidedBehaviorModel'][0][0]
+                group_behavioral_data['Movement'] = dat[1]
+                single_behavioral_data['Movement'] = dat[2]
+                
             elif b == 'visual':
-                behavioral_data['Visual'] =  scipy.io.loadmat('data/VisualSimilarity.mat')['GuidedBehaviorModel'][0][0][1]
+                dat = scipy.io.loadmat('data/VisualSimilarity.mat')['GuidedBehaviorModel'][0][0]
+                group_behavioral_data['Visual'] = dat[1]
+                single_behavioral_data['Visual'] = dat[2]
 
-        return behavioral_data
+        return group_behavioral_data, single_behavioral_data
     
     def simplify_data(self, body, hand, set1_names, set2_names, set_num):
     
@@ -105,36 +114,47 @@ class BehavioralPoseDataAnalysis():
         # Each of 75 frames will have 26 values.
         elif self.model == 'pro':
             for key in body:
-                orgd_body[key] = np.ravel(util.clean_body(body[key])).tolist()
-                orgd_hand[key] = np.ravel(util.clean_hands(hand[key])).tolist()
+                orgd_body[key] = util.clean_body(body[key])
+                orgd_hand[key] = util.clean_hands(hand[key])
+                
               
         # Unravel data under each dictionary key.
         else:
-            for key in body:
-                orgd_body[key] = []; orgd_hand[key] = []
-                for frame_index in range(len(body[key])):
-                    for el in body[key][frame_index]:
-                        orgd_body[key].append(el)
-                    for el in hand[key][frame_index]:
-                        orgd_hand[key].append(el)
+            orgd_body = body; orgd_hand = hand
+#        elif self.model == 'unravel':
+#            for key in body:
+#                orgd_body[key] = []; orgd_hand[key] = []
+#                for frame_index in range(len(body[key])):
+#                    for el in body[key][frame_index]:
+#                        orgd_body[key].append(el)
+#                    for el in hand[key][frame_index]:
+#                        orgd_hand[key].append(el)
+
+        # Get frame by frame full data
+        frame_by_frame_1, frame_by_frame_2 = util.get_frame_by_frame(body, hand)
 
         # Combine body and hand dictionaries
         comb_data_1, comb_data_2 = util.combine_body_hand(orgd_body, orgd_hand)
         
         if set_num == 1:
-            return comb_data_1, util.to_df(comb_data_1, set1_names)
+            return frame_by_frame_1, comb_data_1, util.to_df(comb_data_1, set1_names)
         else:
-            return comb_data_2, util.to_df(comb_data_2, set2_names)
+            return frame_by_frame_2, comb_data_2, util.to_df(comb_data_2, set2_names)
     
-    def get_split_half_reliabilities(self):
+    def get_split_half_reliabilities(self, data):
     
         '''
         Estimate and prints split-half-reliability of dataset. Repeats
         reliability test 1000 times and averages results.
         '''
     
+        set_trace()
+    
         print('Printing reliabilities... may take a while')
-        reliabilities = util.get_split_half_reliabilities(1000, self.data)
+        reliabilities = {}
+        for group in data:
+            #reliabilities = util.get_split_half_reliabilities(1000, self.data)
+            reliabilities[group] = util.get_split_half_reliabilities(1000, data[group])
         #    for el in sorted(reliabilities.items(), key=lambda x:x[1]):
         #        print(el)
         values_only = [reliabilities[i] for i in reliabilities]
@@ -164,7 +184,7 @@ class BehavioralPoseDataAnalysis():
         scores_for_behavior = {} # Stores scores array for each behavioral
             # data category analyzed
         
-        for behavior in self.behavioral_data:
+        for behavior in self.group_behavioral_data:
             
             # Initializes regression net
             if method == 'reg':
@@ -175,7 +195,7 @@ class BehavioralPoseDataAnalysis():
             
             # Creates array of dissimilarity matrices of behavioral data
             # to be used as train/target data
-            judgements = np.ravel(zscore(self.behavioral_data[behavior]))
+            judgements = np.ravel(zscore(self.group_behavioral_data[behavior]))
             judgements_matrix = squareform(judgements)
             
             #abs_scores = []
@@ -263,8 +283,9 @@ class BehavioralPoseDataAnalysis():
         trajectories = {}
         
         # Get n=26 trajectory sets for all videos
-        for video in self.data_dict:
-            trajectories[video] = util.get_trajectories(self.data_dict[video])
+        for video in self.data:
+            trajectories[video] = util.get_trajectories(list(self.data[video]))
+            set_trace()
         
         # Construct dissimilarity matrix based on average distance between
         # two videos' 26 Procrustes transformed trajectories.
@@ -320,6 +341,9 @@ class BehavioralPoseDataAnalysis():
     def ols_reg_comparison(self, scores):
         
         '''
+        Performs and prints an OLS regression between scores, and
+        model_type, analysis_type, and the interaction term between these
+        two.
         '''
         
         print('OLS regression')
@@ -333,7 +357,7 @@ class BehavioralPoseDataAnalysis():
                     df = df.append({'score': score, 'model_type': model_type, 'analysis_type': analysis_type}, ignore_index=True)
         
         model = smf.ols(formula='score ~ model_type + analysis_type + model_type:analysis_type', data=df).fit()
-        print model.summary()
+        print(model.summary())
         
         print('----------')
         
@@ -346,9 +370,12 @@ if __name__ == '__main__':
     
     complete_scores = {}
     
+#    analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file)
+#    analysis.get_split_half_reliabilities(analysis.fbf)
+    
     for model in ['avg', 'pro']:
-        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model, 1, ['visual', 'movement', 'goals'])
-        scores = analysis.cross_validation(method='reg', abso=True)
+        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model=model, behaviors=['visual', 'movement', 'goals'])
+        scores = analysis.cross_validation(method='reg')
         analysis.wilcoxon_test(scores)
         complete_scores[model] = scores
     
