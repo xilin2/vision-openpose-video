@@ -117,8 +117,6 @@ class BehavioralPoseDataAnalysis():
                 orgd_body[key] = util.clean_body(body[key])
                 orgd_hand[key] = util.clean_hands(hand[key])
                 
-              
-        # Unravel data under each dictionary key.
         else:
             orgd_body = body; orgd_hand = hand
 #        elif self.model == 'unravel':
@@ -147,8 +145,6 @@ class BehavioralPoseDataAnalysis():
         Estimate and prints split-half-reliability of dataset. Repeats
         reliability test 1000 times and averages results.
         '''
-    
-        set_trace()
     
         print('Printing reliabilities... may take a while')
         reliabilities = {}
@@ -285,7 +281,6 @@ class BehavioralPoseDataAnalysis():
         # Get n=26 trajectory sets for all videos
         for video in self.data:
             trajectories[video] = util.get_trajectories(list(self.data[video]))
-            set_trace()
         
         # Construct dissimilarity matrix based on average distance between
         # two videos' 26 Procrustes transformed trajectories.
@@ -350,11 +345,14 @@ class BehavioralPoseDataAnalysis():
         
         df = pd.DataFrame(columns = ['score', 'model_type', 'analysis_type'])
         
+        model_types = {'avg': 0, 'pro': 1}
+        analysis_types = {'Visual': 0, 'Movement': 1, 'Goals': 2}
+        
         # Create dataframe
         for model_type in scores:
             for analysis_type in scores[model_type]:
                 for score in scores[model_type][analysis_type]:
-                    df = df.append({'score': score, 'model_type': model_type, 'analysis_type': analysis_type}, ignore_index=True)
+                    df = df.append({'score': score, 'model_type': model_types[model_type], 'analysis_type': analysis_types[analysis_type]}, ignore_index=True)
         
         model = smf.ols(formula='score ~ model_type + analysis_type + model_type:analysis_type', data=df).fit()
         print(model.summary())
@@ -370,17 +368,20 @@ if __name__ == '__main__':
     
     complete_scores = {}
     
+    noise_ceilings = {'Visual': [0.5203, 0.5576], 'Movement': [0.7783, 0.7947], 'Goals': [0.5490, 0.5935], 'Intuitive': 0.4935}
+    
 #    analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file)
 #    analysis.get_split_half_reliabilities(analysis.fbf)
     
     for model in ['avg', 'pro']:
         analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model=model, behaviors=['visual', 'movement', 'goals'])
+#        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model=model, behaviors=['intuitive'])
         scores = analysis.cross_validation(method='reg')
         analysis.wilcoxon_test(scores)
         complete_scores[model] = scores
     
     analysis.ols_reg_comparison(complete_scores)
-    util.plot_error_bar(complete_scores)
+    util.plot_error_bar(complete_scores, noise_ceilings=noise_ceilings)
     
     # Analysis requiring unraveled frame data
     # Plots

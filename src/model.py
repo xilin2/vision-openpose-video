@@ -4,6 +4,8 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
+from pdb import set_trace
+
 def make_layers(block, no_relu_layers):
     layers = []
     for layer_name, v in block.items():
@@ -113,18 +115,18 @@ class bodypose_model(nn.Module):
 
     def forward(self, x):
 
-        out1 = self.model0(x)
+        out1 = self.model0(x) # 15
 
-        out1_1 = self.model1_1(out1)
-        out1_2 = self.model1_2(out1)
+        out1_1 = self.model1_1(out1) # 5 (20)
+        out1_2 = self.model1_2(out1) # 5 (25)
         out2 = torch.cat([out1_1, out1_2, out1], 1)
 
-        out2_1 = self.model2_1(out2)
-        out2_2 = self.model2_2(out2)
+        out2_1 = self.model2_1(out2) #
+        out2_2 = self.model2_2(out2) #
         out3 = torch.cat([out2_1, out2_2, out1], 1)
 
-        out3_1 = self.model3_1(out3)
-        out3_2 = self.model3_2(out3)
+        out3_1 = self.model3_1(out3) # (43)
+        out3_2 = self.model3_2(out3) #
         out4 = torch.cat([out3_1, out3_2, out1], 1)
 
         out4_1 = self.model4_1(out4)

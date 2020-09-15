@@ -66,18 +66,42 @@ class Body(object):
                     with torch.no_grad():
                     
                         feature_maps = {}
-                        for layer_index, layer in self.layer_names:
+                        out_prim = 0
+                        preconcat_indeces = [19, 26, 33, 40, 47, 54]
+                        
+                        for i in range(15):
                             
+                            layer_index, layer = self.layer_names[i]
                             hooks = Hook(self.layers[layer_index])
+                            
                             self.model(data)
                             hooks.close()
                             
-                            features = hooks.output.detach().numpy()
-                            #features = features.flatten()
-                            feature_maps[layer] = features
+                            out = hooks.output
+                            if i == 14:
+                                out_prim = out
+                            out = out.clone().detach().requires_grad_(True)
+                            features = out.detach().numpy().flatten()
+                            feature_maps[i] = features
+                        
+                        for i in range(15,55):
+                    
+                            layer_index_1, layer_1 = self.layer_names[i]
+                            layer_index_2, layer_2 = self.layer_names[i+40]
                             
-                            print('Layer {} hooked: {} values'.format(layer, features.shape))
-                
+                            hook1 = Hook(self.layers[layer_index_1])
+                            hook2 = Hook(self.layers[layer_index_2])
+                            self.model(data)
+                            
+                            hook1.close(), hook2.close()
+                            out1, out2 = hook1.output, hook2.output
+                            
+                            concat = torch.cat([out1, out2, out_prim], 1)
+                            
+                            concat = concat.clone().detach().requires_grad_(True)
+                            features = concat.detach().numpy().flatten()
+                            feature_maps[i] = features
+    
                 except Exception:
                     hooks.close()
                 
@@ -266,7 +290,7 @@ class Body(object):
 if __name__ == "__main__":
     body_estimation = Body('../model/body_pose_model.pth')
 
-    test_images = ['images/fam1.jpg', 'images/ski2.jpg']
+    test_images = ['images/fam1.jpg']
     dicts = []
     for img in test_images:
     

@@ -48,7 +48,7 @@ def find_procrustes_distance(mtx1, mtx2):
         squared_distances.append(s)
     return math.sqrt(sum(squared_distances))
 
-# Combines body and hand datasets into one dataset, with hand data appended onto the end of each frame. Final array is one-dimension
+# Combines body and hand datasets into one dataset, with hand data appended onto the end of each frame (or in the case if 'avg', at the end of each video). Final array is flattened
 def combine_body_hand(body, hand):
 
     comb_data_1 = {}; comb_data_2 = {}
@@ -76,6 +76,7 @@ def combine_body_hand(body, hand):
                 
     return comb_data_1, comb_data_2
 
+# Appends hand values at the end of the each frame, but unlike combine_body_and_hand, does not flatten the final output. Final 2-d output shape = (60 videos, 75 frames).
 def get_frame_by_frame(body, hand):
    
     frame_by_frame_1 = {}; frame_by_frame_2 = {}
@@ -254,7 +255,7 @@ def get_split_half_reliabilities(num, data):
     '''
 
 # Plots error bar given the data set of prediction accuracy scores from cross-validation.
-def plot_error_bar(scores):
+def plot_error_bar(scores, noise_ceilings=None):
     
     fig, ax = plt.subplots()
     labels = ['','']
@@ -275,6 +276,10 @@ def plot_error_bar(scores):
         
             s = scores[model][behavior]
         
+#            if noise_ceilings:
+#                nc = noise_ceilings[behavior]
+#                s = [score/nc for score in s]
+        
             mean = np.mean(s)
             bar_middle = 0.5*(np.percentile(s,25) + np.percentile(s,75))
             bar_height = np.percentile(s,75) - np.percentile(s,25)
@@ -286,6 +291,13 @@ def plot_error_bar(scores):
             ax.plot([x_pos-.12, x_pos+.12], [min(s), min(s)], marker=None, c=colors[i], linewidth=1)
             ax.plot([x_pos-.12, x_pos+.12], [max(s), max(s)], marker=None, c=colors[i], linewidth=1)
             ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
+            
+            if noise_ceilings:
+                nc = noise_ceilings[behavior]
+                noise_middle = 0.5*(nc[0]+nc[1])
+                noise_height = nc[1]-nc[0]
+                ax.barh(y = noise_middle, height=noise_height, width=0.5, left=x_pos-0.25, color='lightgray', zorder=0)
+        
             x_pos += 1
     
     ax.set_xticks(np.arange(len(labels)))

@@ -16,19 +16,26 @@ class Hook():
         self.hook = module.register_forward_hook(self.hook)
 
     def hook(self, module, input, output):
-        self.output = output.clone().detach().requires_grad_(True)
-        self.input = input[0].clone().detach().requires_grad_(True)
+        self.output = output
+        #self.output = output.clone().detach().requires_grad_(True)
+        #self.input = input[0].clone().detach().requires_grad_(True)
+        #self.input = input.clone().detach().requires_grad_(True)
+        self.input = [ip.clone().detach().requires_grad_(True) for ip in input]
 
     def close(self):
         self.hook.remove()
-        
+
+#
 def get_layer_names(layers):
 
     layer_names = []
     layer_ind = 0
     for i, layer in enumerate(layers):
-        layer_name = str(layer).split('(')[0]
-        layer_names.append([i, str(i+1) + '-' + layer_name + '-' + str(sum(layer_name in string[1].split('-')[1] for string in layer_names) + 1)])
+        if str(layer).split('(')[0] == 'ReLU':
+            continue
+        layer_names.append([i, str(i+1) + '-' + str(layer)])
+#        layer_name = str(layer).split('(')[0]
+#        layer_names.append([i, str(i+1) + '-' + layer_name + '-' + str(sum(layer_name in string[1].split('-')[1] for string in layer_names) + 1)])
         #layer_ind = layer_ind + 1
     return layer_names
 
