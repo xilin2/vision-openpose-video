@@ -36,7 +36,7 @@ class Body(object):
             self.layers = flatten_model(self.model)
             self.layer_names = get_layer_names(self.layers)
         
-    def __call__(self, oriImg):
+    def __call__(self, oriImg, layer_to_hook=None):
         # scale_search = [0.5, 1.0, 1.5, 2.0]
         scale_search = [0.5]
         boxsize = 368
@@ -65,47 +65,55 @@ class Body(object):
                 try:
                     with torch.no_grad():
                     
-                        feature_maps = {}
-                        out_prim = 0
-                        preconcat_indeces = [19, 26, 33, 40, 47, 54]
+                        #feature_maps = {}
+                        #preconcat_indeces = [19, 26, 33, 40, 47, 54]
                         
-                        for i in range(15):
+                        if layer_to_hook in range(15):
                             
-                            layer_index, layer = self.layer_names[i]
-                            hooks = Hook(self.layers[layer_index])
+                            layer_index, layer = self.layer_names[layer_to_hook]
+                            hook = Hook(self.layers[layer_index])
+                            hooks = [hook]
                             
                             self.model(data)
-                            hooks.close()
+                            hook.close()
                             
-                            out = hooks.output
-                            if i == 14:
-                                out_prim = out
+                            out = hook.output
+#                            if layer_to_hook == 14:
+#                                self.out_prim = out
                             out = out.clone().detach().requires_grad_(True)
                             features = out.detach().numpy().flatten()
-                            feature_maps[i] = features
+                            #feature_maps[i] = features
                         
-                        for i in range(15,55):
+                        elif layer_to_hook in range(15,55):
                     
-                            layer_index_1, layer_1 = self.layer_names[i]
-                            layer_index_2, layer_2 = self.layer_names[i+40]
+                            layer_index_1, layer_1 = self.layer_names[layer_to_hook]
+                            layer_index_2, layer_2 = self.layer_names[layer_to_hook+40]
+                            layer_index_prim, layer_prim = self.layer_names[14]
                             
                             hook1 = Hook(self.layers[layer_index_1])
                             hook2 = Hook(self.layers[layer_index_2])
+                            hook_prim = Hook(self.layers[layer_index_prim])
+                            hooks = [hook1, hook2, hook_prim]
+                            
                             self.model(data)
                             
                             hook1.close(), hook2.close()
-                            out1, out2 = hook1.output, hook2.output
+                            out1, out2  = hook1.output, hook2.output
+                            
+                            hook_prim.close()
+                            out_prim = hook_prim.output
                             
                             concat = torch.cat([out1, out2, out_prim], 1)
                             
                             concat = concat.clone().detach().requires_grad_(True)
                             features = concat.detach().numpy().flatten()
-                            feature_maps[i] = features
+                            #feature_maps[i] = features
     
                 except Exception:
-                    hooks.close()
+                    for hook in hooks:
+                        hook.close()
                 
-                return feature_maps
+                return features
             
             with torch.no_grad():
                 Mconv7_stage6_L1, Mconv7_stage6_L2 = self.model(data) # sends through processing

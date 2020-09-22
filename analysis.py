@@ -172,9 +172,10 @@ class BehavioralPoseDataAnalysis():
         # Creates array of dissimilarity matrices of pose data to be used as train/test data
         if self.model == 'pro':
             predictors_matrix = self.construct_procrustes_matrices(predictors)
+            self.check_procrustes_validity(predictors_matrix)
         else:
             predictors_matrix = self.construct_distance_matrices(predictors)
-            
+        
         print('Cross-validation results for {}'.format(self.model))
 
         scores_for_behavior = {} # Stores scores array for each behavioral
@@ -315,6 +316,23 @@ class BehavioralPoseDataAnalysis():
             predictors_matrix.append(distance_for_feature)
             
         return predictors_matrix
+    
+    def check_procrustes_validity(self, predictors):
+        
+        # add all matrices together
+        np_predictors = [np.array(p) for p in predictors]
+        sum_predictor = np_predictors[0]
+        for i in range(1, len(np_predictors)):
+            sum_predictor += np_predictors[i]
+        
+        values = []
+        for i in range(len(sum_predictor)):
+            for j in range(i, len(sum_predictor[0])):
+                values.append([(i+1,j+1), sum_predictor[i][j]])
+                values.sort(key=lambda x: x[1])
+                
+        set_trace()
+                
     
     def wilcoxon_test(self, scores):
     
