@@ -49,12 +49,10 @@ class VidHooking():
         return vid_list
     
     def get_full_features(self):
-
         rdms = {} # Eventually store 56 rdms
         
         # Cycles through each hooking layer
-        #for layer in range(0,56):
-        for layer in range(0,2):
+        for layer in range(0,56):
             
             avgd_data_for_layer = []
             
@@ -66,7 +64,7 @@ class VidHooking():
         
             distance_vector = pdist(avgd_data_for_layer, metric='sqeuclidean')
             distance_vector = zscore(distance_vector)
-            rdms[str(layer)] = distance_vector
+            rdms['Layer_{}'.format(layer)] = distance_vector
                     
         return rdms
     
@@ -95,8 +93,8 @@ class VidHooking():
                skip_val = []
             
             frames_read = 0
-            # while frames_read < 75
-            while frames_read < 2:
+            
+            while frames_read < 75:
             
                 flag, frame = cap.read() # read in the next frame
                 pos_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) # frame index
@@ -159,16 +157,8 @@ class VidHooking():
                             
 if __name__ == "__main__":
     
-    dir = 'exp/demo/'
-    
-    set_trace()
-    
-    a = np.arange(20)
-    mdic = {"a": a, "label": "experiment"}
-    savemat("matlab_matrix.mat", mdic)
-    
+    dir = 'exp/vids_set/'
     hooking = VidHooking(dir)
     rdms = hooking.get_full_features()
-    #savemat(dir+dir.split('/')[1]+'_hooking_RDMs.mat', rdms)
-    savemat('rdms.mat', rdms)
+    savemat(dir+dir.split('/')[1]+'_hooking_RDMs.mat', rdms)
     set_trace()
