@@ -3,6 +3,7 @@ import numpy as np
 import scipy.io
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
 import analysis_util as util
 
@@ -18,27 +19,237 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import ElasticNet
 
 import statsmodels.formula.api as smf
-import seaborn as sns
+import statsmodels.api as sm
+#import statsmodels.discrete.discrete_model
 
 from pdb import set_trace
 
-class BehavioralPoseDataAnalysis():
+def cross_validation(predictors, judgements, label, removed_joints=[], removed_videos=[], method=None):
+           
+    '''
+    Uses either regularized or linear regression to cross-validate
+    pose data and behavioral data. Pose data is organized into
+    predictors  of dissimilarity matrices of size (60, 60). Prints the
+    mean of the prediction accuracies, and returns a dictionary of the
+    arrays of prediction accuracies organized by behavioral category.
+    '''
+   
+    #print('Cross-validation results for {}'.format(label))
+    scores_for_behavior = {} # Stores scores array for each behavioral
+       # data category analyzed
+       
+    # Initializes regression net
+    if method == 'reg':
+        alpha = 0.05
+        net = ElasticNet(alpha=alpha)
+    else:
+        net = LinearRegression()
+   
+    # Creates array of dissimilarity matrices of behavioral data
+    # to be used as train/target data
+    judgements = np.ravel(zscore(self.group_behavioral_data[behavior]))
+    judgements_matrix = squareform(judgements)
+
+    scores = []
+   
+    # Cycles through each video, obtaining prediction accuracies
+    for i in range(60):
+        if i in removed_videos:
+            continue
+        behavior_train, target = util.hold_pairs(i, judgements, removed_videos)
+        feature_train = []; feature_test = []
+        # Appends train/test data from each predictor onto arrays
+        for j, pred in enumerate(predictors_matrix):
+            if j in removed_joints:
+                continue
+            tr, te = util.hold_pairs(i, pred, removed_videos)
+            feature_train.append(tr); feature_test.append(te)
+        net.fit(np.transpose(feature_train), np.transpose(behavior_train))
+        predicted = net.predict(np.transpose(feature_test))
+        score = pearsonr(np.ravel(predicted), np.ravel(target))[0]
+        scores.append(score)
+   
+    scores_for_behavior[behavior] = scores
+    prediction_accuracy = np.mean(scores)
+   
+    print('Average prediction accuracy for {} similarity: {}'.format(label, prediction_accuracy))
+       
+    print('----------')
+           
+    return scores_for_behavior
+
+class Behaviors():
+
+    def __init__(self, behaviors):
+    
+        self.group_behavioral_data = {}
+        self.single_behavioral_data = {}
+        
+        for b in behaviors:
+            if b == 'goals':
+                dat = scipy.io.loadmat('data/GoalSimilarity.mat')['GuidedBehaviorModel'][0][0]
+                self.group_behavioral_data['Goals'] = dat[1]
+                self.single_behavioral_data['Goals'] = dat[2]
+            elif b == 'intuitive':
+                self.group_behavioral_data['Intuitive'] = scipy.io.loadmat('data/IntuitiveActionSim.mat')['IntuitiveSimilarity'][0][0][1][0][0][1]
+            elif b == 'movement':
+                dat = scipy.io.loadmat('data/MovementSimilarity.mat')['GuidedBehaviorModel'][0][0]
+                self.group_behavioral_data['Movement'] = dat[1]
+                self. single_behavioral_data['Movement'] = dat[2]
+            elif b == 'visual':
+                dat = scipy.io.loadmat('data/VisualSimilarity.mat')['GuidedBehaviorModel'][0][0]
+                self.group_behavioral_data['Visual'] = dat[1]
+                self.single_behavioral_data['Visual'] = dat[2]
+        
+class LayerDataAnalysis():
+
+    def __init__(self, layer_data_file, behaviors=None):
+        self.layer_data = self.load_layer_data(layer_data_file)
+        if behaviors:
+            beh = Behaviors(behaviors)
+            self.group_behavioral_data = beh.group_behavioral_data
+            self.single_behavioral_data = beh.single_behavioral_data
+    
+    def load_layer_data(self, file):
+    
+        '''
+        Loads pose and video data. Returns body, hand, and video name data
+        as dictionaries.
+        '''
+        
+        layers = scipy.io.loadmat(file)
+        numerical_layers = {}
+        
+        # Delete extra dictionary keys
+        del layers['__header__']
+        del layers['__version__']
+        del layers['__globals__']
+        
+        for layer in layers:
+            l = layer.split('_')[1]
+            numerical_layers[l] = layers[layer][0]
+        
+        return numerical_layers
+    
+    def cross_validation(self, method=None):
+        
+        scores_for_behavior = {} # Stores scores array for each behavioral
+            # data category analyzed
+        
+        for behavior in self.group_behavioral_data:
+            
+            
+            # Initializes regression net
+            if method == 'reg':
+                alpha = 0.05
+                net = ElasticNet(alpha=alpha)
+            else:
+                net = LinearRegression()
+            
+            # Creates array of dissimilarity matrices of behavioral data
+            # to be used as train/target data
+            judgements = np.ravel(zscore(self.group_behavioral_data[behavior]))
+            judgements_matrix = squareform(judgements)
+
+            scores_by_layer = {}
+            
+            # Cycles through each video, obtaining prediction accuracies
+            for layer in self.layer_data:
+#                if layer == '55':
+#                    continue
+                scores = [] # temporarily holds score data for each video
+                for i in range(60):
+                    behavior_train, target = util.hold_pairs(i, judgements_matrix)
+                    feature_train, feature_test = util.hold_pairs(i, squareform(self.layer_data[layer]))
+                    feature_train = np.array(feature_train).reshape(1,-1)
+                    feature_test = np.array(feature_test).reshape(1,-1)
+                    net.fit(np.transpose(feature_train), np.transpose(behavior_train))
+                    predicted = net.predict(np.transpose(feature_test))
+                    score = pearsonr(np.ravel(predicted), np.ravel(target))[0]
+                    scores.append(score)
+                scores_by_layer[layer] = scores
+                
+            scores_for_behavior[behavior] = scores_by_layer
+            #prediction_accuracy = np.mean(scores)
+            #abs_prediction_accuracy = np.mean(abs_scores)
+            
+            #print('Average prediction accuracy for {} similarity: {}'.format(behavior, prediction_accuracy))
+            
+        print('----------')
+        
+        return scores_for_behavior
+    
+    def regression_analysis(self, scores, deg, behavior):
+    
+        means = np.array([np.nanmean(scores[layer]) for layer in scores])
+        df = pd.DataFrame(means, columns=['means'])
+        df['layers'] = df.index
+#        k = np.arange(len(means))
+        reg = {'Means': means}
+#
+#        for d in deg:
+#            fit = np.polyfit(np.ravel(np.argwhere(~np.isnan(means))), means[~np.isnan(means)], d)
+#            fit_fn = np.poly1d(fit)
+#            reg[d] = fit_fn(k)
+        
+#        fit = np.polyfit(np.log(np.ravel(np.argwhere(~np.isnan(means)))), means[~np.isnan(means)], 1)
+#        fit_fn = np.poly1d(fit)
+#        reg['log'] = fit_fn(k)
+        
+        print('Linear OLS regression for {}'.format(behavior))
+        linear = smf.ols(formula='means ~ layers', data=df, missing='drop').fit()
+        reg['Linear'] = linear.predict()
+        print(linear.summary())
+        
+        print('Quadratic OLS regression for {}'.format(behavior))
+        quad = smf.ols(formula='means ~ layers + layers^2', data=df, missing='drop').fit()
+        reg['Quadratic'] = quad.predict()
+        print(quad.summary())
+        
+        log = smf.Logit(formula='means ~ layers', data=df, missing='drop').fit()
+        reg['Log'] = log.predict()
+        print('Anova table for {}'.format(behavior))
+        ano = sm.stats.anova_lm(linear, quad)
+        print(ano)
+        
+        
+#        df = pd.DataFrame(columns = ['value', 'layer', 'regression_type'])
+#        for reg_type in reg:
+#            for value in reg[reg_type]:
+#                df = df.append({'value': value, 'regression_type': reg_type}, ignore_index=True)
+#
+#        model = smf.ols(formula='value ~ regression_type', data=df, missing='drop').fit()
+#        print(model.summary())
+        
+        print('----------')
+        
+        return reg
+        
+
+class PoseDataAnalysis():
 
     '''
     Class which loads, simplifies, and performs analyses on pose and
     behavioral data
     '''
 
-    def __init__(self, body_file, hand_file, xls_path, model=None, set_num=1, behaviors=None):
+    def __init__(self, body_file, hand_file, xls_path, removed_videos=[], removed_joints=[], model=None, set_num=1, behaviors=None):
     
         body, hand, set1_names, set2_names = self.load_pose_data(body_file, hand_file, xls_file)
         if behaviors:
-            self.group_behavioral_data, self.single_behavioral_data = self.load_behavioral_data(behaviors)
+            beh = Behaviors(behaviors)
+            self.group_behavioral_data = beh.group_behavioral_data
+            self.single_behavioral_data = beh.single_behavioral_data
         self.model = model
+        self.removed_videos = removed_videos
+        self.removed_joints = removed_joints
+        
+        # self.fbf = dict of size 60 holding an array of (75x52)
+        # self.data_dict = self.data as a dict with numerical video names
+        # self.data = dataframe with action names
         self.fbf, self.data_dict, data = self.simplify_data(body, hand, set1_names, set2_names, set_num)
         self.data = data[0]; self.names = data[1]
-    
-    
+        
     def load_pose_data(self, body_file, hand_file, xls_file):
         
         '''
@@ -81,7 +292,6 @@ class BehavioralPoseDataAnalysis():
                 dat = scipy.io.loadmat('data/MovementSimilarity.mat')['GuidedBehaviorModel'][0][0]
                 group_behavioral_data['Movement'] = dat[1]
                 single_behavioral_data['Movement'] = dat[2]
-                
             elif b == 'visual':
                 dat = scipy.io.loadmat('data/VisualSimilarity.mat')['GuidedBehaviorModel'][0][0]
                 group_behavioral_data['Visual'] = dat[1]
@@ -119,14 +329,6 @@ class BehavioralPoseDataAnalysis():
                 
         else:
             orgd_body = body; orgd_hand = hand
-#        elif self.model == 'unravel':
-#            for key in body:
-#                orgd_body[key] = []; orgd_hand[key] = []
-#                for frame_index in range(len(body[key])):
-#                    for el in body[key][frame_index]:
-#                        orgd_body[key].append(el)
-#                    for el in hand[key][frame_index]:
-#                        orgd_hand[key].append(el)
 
         # Get frame by frame full data
         frame_by_frame_1, frame_by_frame_2 = util.get_frame_by_frame(body, hand)
@@ -139,7 +341,7 @@ class BehavioralPoseDataAnalysis():
         else:
             return frame_by_frame_2, comb_data_2, util.to_df(comb_data_2, set2_names)
     
-    def get_split_half_reliabilities(self, data):
+    def get_split_half_reliabilities(self):
     
         '''
         Estimate and prints split-half-reliability of dataset. Repeats
@@ -148,16 +350,16 @@ class BehavioralPoseDataAnalysis():
     
         print('Printing reliabilities... may take a while')
         reliabilities = {}
-        for group in data:
+        for group in self.fbf:
             #reliabilities = util.get_split_half_reliabilities(1000, self.data)
-            reliabilities[group] = util.get_split_half_reliabilities(1000, data[group])
+            reliabilities[group] = util.get_split_half_reliabilities(1000, self.fbf[group])
         #    for el in sorted(reliabilities.items(), key=lambda x:x[1]):
         #        print(el)
         values_only = [reliabilities[i] for i in reliabilities]
         print('Reliability mean: {}'.format(np.mean(values_only)))
         print('Reliability median: {}'.format(np.median(values_only)))
     
-    def cross_validation(self, method=None, use_PCA=False, abso=False):
+    def cross_validation(self, predictors, method=None, use_PCA=False, abso=False):
             
         '''
         Uses either regularized or linear regression to cross-validate
@@ -170,13 +372,8 @@ class BehavioralPoseDataAnalysis():
         predictors = self.get_predictors(use_PCA)
         
         # Creates array of dissimilarity matrices of pose data to be used as train/test data
-        if self.model == 'pro':
-            predictors_matrix = self.construct_procrustes_matrices(predictors)
-            self.check_procrustes_validity(predictors_matrix)
-        else:
-            predictors_matrix = self.construct_distance_matrices(predictors)
         
-        print('Cross-validation results for {}'.format(self.model))
+        print('Pose cross-validation results for {}'.format(self.model))
 
         scores_for_behavior = {} # Stores scores array for each behavioral
             # data category analyzed
@@ -200,11 +397,15 @@ class BehavioralPoseDataAnalysis():
             
             # Cycles through each video, obtaining prediction accuracies
             for i in range(60):
-                behavior_train, target = util.hold_pairs(i, judgements_matrix)
+                if i in self.removed_videos:
+                    continue
+                behavior_train, target = util.hold_pairs(i, judgements_matrix, self.removed_videos)
                 feature_train = []; feature_test = []
                 # Appends train/test data from each predictor onto arrays
                 for j, pred in enumerate(predictors_matrix):
-                    tr, te = util.hold_pairs(j, pred)
+                    if j in self.removed_joints:
+                        continue
+                    tr, te = util.hold_pairs(i, pred, self.removed_videos)
                     feature_train.append(tr); feature_test.append(te)
                 net.fit(np.transpose(feature_train), np.transpose(behavior_train))
                 predicted = net.predict(np.transpose(feature_test))
@@ -242,7 +443,13 @@ class BehavioralPoseDataAnalysis():
         else:
             predictors = self.data.T
         
-        return predictors
+        if self.model == 'pro':
+            predictors_matrix = self.construct_procrustes_matrices(predictors)
+            self.check_procrustes_validity(predictors_matrix)
+        else:
+            predictors_matrix = self.construct_distance_matrices(predictors)
+        
+        return predictors_matrix
     
     def construct_distance_matrices(self, predictors):
     
@@ -256,9 +463,9 @@ class BehavioralPoseDataAnalysis():
         
         for i in range(0, predictors.shape[1], 2): # cycle through each predictor
             #values = [[val] for val in  predictors[predictors.columns[i]].tolist()]
-            values = [val for val in  predictors[[i,i+1]].values.tolist()]
+            values = [val for val in predictors[[i,i+1]].values.tolist()]
             distance_vector = pdist(values, metric='sqeuclidean')
-            distance_vector = zscore(distance_vector)
+            distance_vector = zscore(distance_vector, nan_policy='omit')
             distance_matrix = squareform(distance_vector)
             predictors_matrix.append(distance_matrix)
         
@@ -280,23 +487,35 @@ class BehavioralPoseDataAnalysis():
         trajectories = {}
         
         # Get n=26 trajectory sets for all videos
-        for video in self.data:
+        for i, video in enumerate(self.data):
             trajectories[video] = util.get_trajectories(list(self.data[video]))
         
         # Construct dissimilarity matrix based on average distance between
         # two videos' 26 Procrustes transformed trajectories.
         predictors_matrix = [] # stores dissimilarity matrices
         for k in range(n): # Cycles through each of 26 trajectories
+        
             # distance matrix to later be added to predictors_matrix
-            distance_for_feature = [[] for m in range(60)]
+            distance_for_feature = [[] for m in range(len(trajectories))]
             for i, vid1 in enumerate(trajectories):
+            
                 for j, vid2 in enumerate(trajectories):
                     avg_dist = []
+                    
                     if i == j: # same video
                         distance_for_feature[i].append(0)
                         continue
             
                     traj1 = trajectories[vid1][k]; traj2 = trajectories[vid2][k]
+                    
+                    # Check for empty trajectoriess
+                    # nanchange
+#                    if traj1.count([0,0]) == len(traj1):
+#                        distance_for_feature[i].append(np.nan)
+#                        continue
+#                    if traj2.count([0,0]) == len(traj2):
+#                        distance_for_feature[i].append(np.nan)
+#                        continue
                     
                     # In the case that either trajectory does not contain
                     # >1 unique points, modify first point by 0.01
@@ -311,28 +530,95 @@ class BehavioralPoseDataAnalysis():
                     avg_dist.append(util.find_procrustes_distance(mtx1_2, mtx2_2))
                     distance_for_feature[i].append(np.mean(avg_dist))
             
-            distance_for_feature = zscore(squareform(distance_for_feature))
+            distance_for_feature = zscore(squareform(distance_for_feature, checks=False), nan_policy='omit')
             distance_for_feature = squareform(distance_for_feature)
+            
+#            plt.imshow(distance_for_feature, cmap='hot', interpolation='nearest')
+#            plt.xticks(np.arange(len(trajectories)), trajectories.keys(), size=7, rotation=90)
+#            plt.yticks(np.arange(len(trajectories)), trajectories.keys(), size=7)
+#            plt.title(k)
+#            plt.gcf().set_size_inches((10,10))
+#            plt.subplots_adjust(left=0.22, bottom=0.22)
+#            plt.savefig('plots/joint_{}_visualization.png'.format(k))
+#            plt.close()
+            
             predictors_matrix.append(distance_for_feature)
             
         return predictors_matrix
     
     def check_procrustes_validity(self, predictors):
-        
         # add all matrices together
         np_predictors = [np.array(p) for p in predictors]
         sum_predictor = np_predictors[0]
         for i in range(1, len(np_predictors)):
-            sum_predictor += np_predictors[i]
+            #sum_predictor += np_predictors[i]
+            sum_predictor = util.sum_two_matrices(sum_predictor, np_predictors[i])
         
         values = []
+        hands_only = [7,8,11,13,17,18,19,20,21,22,31,34,38,39,41,56,58]
+        full_body = [0,1,2,3,4,5,6,7,10,16,24,25,26,27,28,29,36,37,42,43,44,45,46,47,48,51,53,54,55,59]
+        no_hands = []
+        only_body = []
+        
         for i in range(len(sum_predictor)):
+            if i in self.removed_videos:
+                continue
             for j in range(i, len(sum_predictor[0])):
+                if j in self.removed_videos:
+                    continue
+                if i not in hands_only and j not in hands_only:
+                    no_hands.append([(i+1,j+1), sum_predictor[i][j]])
+                if i in full_body and j in full_body:
+                    only_body.append([(i+1,j+1), sum_predictor[i][j]])
                 values.append([(i+1,j+1), sum_predictor[i][j]])
-                values.sort(key=lambda x: x[1])
-                
+        
+        values.sort(key=lambda x: x[1])
+        no_hands.sort(key=lambda x: x[1])
+        only_body.sort(key=lambda x: x[1])
+        
         set_trace()
+    
+    def count_joint_frequency(self):
+        
+        df = pd.DataFrame(columns = ['video', 'joint', 'frequency'])
+        for joint in range(26):
+            for i, video in enumerate(self.data_dict):
+                #for frame in self.fbf[video]:
+                freq = 0
+                for j in range(52):
+                    frame = self.data_dict[video][j*52:j*52+52]
+                    if int(frame[joint*2]) != 0 or int(frame[joint*2+1]) != 0:
+                        freq += 1
+                df = df.append({'video': self.names[i], 'joint': joint, 'frequency': freq}, ignore_index = True)
                 
+        videos = df['video'].unique()
+        joints = df['joint'].unique()
+        
+        vid_values = {v: 0 for v in videos}
+        joint_values = {j: 0 for j in joints}
+        
+        for i, row in df.iterrows():
+            if row['frequency'] > 0:
+                joint_values[row['joint']] += 1
+                
+        removed_joints = []
+#        for i in range(len(joint_values)):
+#            if joint_values[i] < 30:
+#                removed_joints.append(i)
+        
+        for i, row in df.iterrows():
+            if row['frequency'] > 0:
+#                if row['joint'] not in removed_joints:
+#                    vid_values[row['video']] += 1
+                vid_values[row['video']] += 1
+        
+        removed_videos = []
+        for i, video in enumerate(self.data):
+            #if vid_values[video] < (len(joint_values)-len(removed_joints)):
+            if vid_values[video] < 5:
+                removed_videos.append(i)
+
+        return df, removed_videos, removed_joints
     
     def wilcoxon_test(self, scores):
     
@@ -384,27 +670,55 @@ if __name__ == '__main__':
     hand_file = 'data/vids_hand_new_track.mat'
     xls_file = 'data/vidnamekey.xlsx'
     
-    complete_scores = {}
+    layer_file = 'data/vids_set_hooking_RDMs.mat'
     
     noise_ceilings = {'Visual': [0.5203, 0.5576], 'Movement': [0.7783, 0.7947], 'Goals': [0.5490, 0.5935], 'Intuitive': 0.4935}
     
-#    analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file)
-#    analysis.get_split_half_reliabilities(analysis.fbf)
+    ''' Layer Analysis '''
+    
+#    analysis = LayerDataAnalysis(layer_file, behaviors=['visual', 'movement', 'goals'])
+#    scores = analysis.cross_validation(method='reg')
+
+#    for behavior in scores:
+#        util.plot_layer_bar(scores[behavior], title='Layer cross-validation accuracies for {}'.format(behavior))
+
+#    set_trace()
+#
+#    for behavior in scores:
+#        reg = analysis.regression_analysis(scores[behavior], [1,2], behavior)
+#        util.plot_layer_fit(reg, title='Fit for {}'.format(behavior))
+#
+#        #util.plot_layer_fit(scores[behavior], title='Linear Fit for {}'.format(behavior), deg=1)
+#        #util.plot_layer_fit(scores[behavior], title='Quadratic Fit for {}'.format(behavior), deg=2)
+#
+#    set_trace()
+    
+    ''' Pose Analysis '''
+    
+    complete_pose_scores = {}
+    
+    #analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file)
+    #joint_count = analysis.count_joint_frequency()
+    #analysis.get_split_half_reliabilities()
+    
+    analysis = PoseDataAnalysis(body_file, hand_file, xls_file, model='pro', behaviors=['visual', 'movement', 'goals'])
+    joint_count, rv, rj = analysis.count_joint_frequency()
+    #rv = []; rj = []
     
     for model in ['avg', 'pro']:
-        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model=model, behaviors=['visual', 'movement', 'goals'])
+        analysis = PoseDataAnalysis(body_file, hand_file, xls_file, model=model, removed_videos=rv, removed_joints=rj, behaviors=['visual', 'movement', 'goals'])
 #        analysis = BehavioralPoseDataAnalysis(body_file, hand_file, xls_file, model=model, behaviors=['intuitive'])
         scores = analysis.cross_validation(method='reg')
         analysis.wilcoxon_test(scores)
-        complete_scores[model] = scores
+        complete_pose_scores[model] = scores
     
-    analysis.ols_reg_comparison(complete_scores)
-    util.plot_error_bar(complete_scores, noise_ceilings=noise_ceilings)
+    analysis.ols_reg_comparison(complete_pose_scores)
+    util.plot_error_bar(complete_pose_scores, noise_ceilings=noise_ceilings, title='Comparison of Average and Procrustes distance cross-validation accuracies')
     
+    '''
     # Analysis requiring unraveled frame data
     # Plots
-    '''
-    
+
     label = 'empty'
     methods = ['complete', 'average', 'weighted', 'ward']
     

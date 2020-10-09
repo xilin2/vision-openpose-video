@@ -6,7 +6,7 @@ import random
 import math
 
 import scipy.cluster.hierarchy as sch
-from scipy.stats import zscore, pearsonr
+from scipy.stats import zscore, pearsonr, wilcoxon
 
 from pdb import set_trace
 
@@ -27,6 +27,7 @@ def get_trajectories(vid_data):
     for i, tr in enumerate(traj_incl_0): # tr = traj of a single point (len=75)
         for j, pnt in enumerate(tr):
             if all(coord == 0 for coord in pnt): # point = (0,0)
+                #print('yes')
                 if j == 0: # if first point is (0,0), then set point to first non-zero point in trajectory
                     non_zeros = [p for p in tr if any(el != 0 for el in p)]
                     if len(non_zeros) == 0:
@@ -85,14 +86,14 @@ def get_frame_by_frame(body, hand):
            frame_by_frame_1[key] = []
            for i in range(len(body[key])):
                temp = []
-               temp.extend(body[key][i])
+               temp.extend(body[key][i][0:2])
                temp.extend(np.ravel(hand[key][i]))
                frame_by_frame_1[key].append(temp)
        else:
            frame_by_frame_2[key] = []
            for i in range(len(body[key])):
                temp = []
-               temp.extend(body[key][i])
+               temp.extend(body[key][i][0:2])
                temp.extend(np.ravel(hand[key][i]))
                frame_by_frame_2[key].append(temp)
     
@@ -119,7 +120,7 @@ def average_hands(video):
                   avgd[j+8*i].append(val)
     for i in range(len(avgd)):
         if len(avgd[i]) == 0:
-            avgd[i] = 0
+            avgd[i] = 0 #nanchange
         else:
             avgd[i] = np.mean(avgd[i])
 
@@ -134,12 +135,12 @@ def average_body(video):
     avgd = [[] for i in range(len(video[0]))]
     for frame in video:
         for i in range(0, len(frame), 2):
-            if int(frame[i]) == 0 and int(frame[i+1]) == 0:
+            if int(frame[i]) == 0 and int(frame[i+1]) == 0: # change-1
                 continue
             avgd[i].append(frame[i]); avgd[i+1].append(frame[i+1])
     for i in range(len(avgd)):
         if len(avgd[i]) == 0:
-            avgd[i] = 0
+            avgd[i] = 0 #nanchang
         else:
             avgd[i] = np.mean(avgd[i])
     
@@ -164,21 +165,33 @@ def clean_body(video):
         for i, val in enumerate(frame):
             if (i%4) == 3 or (i%4) == 2:
                 continue
+            if (i%4) == 0:
+                if int(val) == -1 and int(frame[i+1]) == -1:
+                    clnd[j].append(0)
+                    continue
+            if (i%4) == 1:
+                if int(val) == -1 and int(frame[i-1]) == -1:
+                    clnd[j].append(0)
+                    continue
             clnd[j].append(val)
     return clnd
 
 # Returns a vector of all pairs that do not include the video index in a dissimilarity matrix, and a vector of all pairs that do include the video index.
-def hold_pairs(hold, matrix):
+def hold_pairs(hold, matrix, removed_videos):
     held_values = []
     vector = []
     # Moves row by row through top triangle of distance matrix. Rows get shorter and shorter as loop travels down the triangle.
     for i in range(len(matrix)):
+        if i in removed_videos:
+            continue
         for j in range(i+1,len(matrix)):
+            if j in removed_videos:
+                continue
             if i is hold or j is hold:
                 held_values.append(matrix[i][j])
                 continue
             vector.append(matrix[i][j])
-    return vector, held_values
+    return np.array(vector), np.array(held_values)
 
 # Return unraveled dataframes with body + hand features. The index corresponds to a value within each video's dataset, and the columns correspond to the videos in the video set.
 def to_df(data, names):
@@ -195,7 +208,8 @@ def to_df(data, names):
             values[i].append(val)
     
     df = pd.DataFrame(values, columns=actions)
-    df = df.apply(zscore)
+    #df = df.astype(int)
+    #df = df.apply(zscore)
     
     return df, actions
     
@@ -212,22 +226,80 @@ def plot_heir_cluster(df, met, dir, vid_set_num):
     plt.close()
     return dg['leaves']
 
-# Plot and save correlation heatmap of dataframe
-def plot_heatmap(df, met, dir, vid_set_num):
-    corr = df.corr()
-    fig, ax = plt.subplots(figsize=(18, 15))
-    colormap = sns.diverging_palette(220, 10, as_cmap=True)
-    sns.heatmap(corr, cmap=colormap)
-    plt.title('Video Set {}'.format(vid_set_num), fontsize=20)
-    plt.subplots_adjust(left=0.22, bottom=0.20, top=0.95, right=0.90)
-    plt.xticks(range(len(corr.columns)), corr.columns);
-    plt.yticks(range(len(corr.columns)), corr.columns)
-    plt.savefig('{}/{}_vidset{}_heatmap.png'.format(dir, met, vid_set_num))
-    #plt.show()
-    plt.close()
+def sum_two_matrices(m1, m2):
+
+    new_matrix = np.empty(m1.shape)
+    
+    for i in range(m1.shape[0]):
+        for k in range(m2.shape[0]):
+            if np.isnan(m1[i][k]):
+                if np.isnan(m2[i][k]): # both nans
+                    new_matrix[i][k] = np.nan
+                else: # only m1[i][k] is nan
+                    new_matrix[i][k] = m2[i][k]
+            elif np.isnan(m2[i][k]): # only m2[i][k] is nan
+                new_matrix[i][k] = m1[i][k]
+            else: # none are nan
+                new_matrix[i][k] = m1[i][k] + m2[i][k]
+        
+    return new_matrix
+
+def plot_heatmap(df, index, columns, values, title=None):
+    
+    set_trace()
+
+    ax = plt.axes()
+    df = df.pivot(index=index, columns=columns, values=values)
+    df = df.astype(float)
+    sns.heatmap(df, xticklabels=True, yticklabels=True)
+    if title:
+        ax.set_title(title)
+    plt.show()
+
+def plot_histograms(df, joint, video, title=None):
+    
+    ax = plt.axes()
+    videos = df[video].unique()
+    joints = df[joint].unique()
+    
+    vid_values = {v: 0 for v in videos}
+    joint_values = {j: 0 for j in joints}
+    
+    for i, row in df.iterrows():
+        if row['frequency'] > 0:
+            vid_values[row['video']] += 1
+            joint_values[row['joint']] += 1
+    
+    v_values = [[vid_values[v], v] for v in vid_values]
+    j_values = [[joint_values[j], j] for j in joint_values]
+    
+    v_values.sort(); j_values.sort()
+    
+    set_trace()
+    
     return
+    
+    # Count number of joints for each video
+    
+    
+    
+# Plot and save correlation heatmap of dataframe
+#def plot_heatmap(df, met, dir, vid_set_num):
+#    corr = df.corr()
+#    fig, ax = plt.subplots(figsize=(18, 15))
+#    colormap = sns.diverging_palette(220, 10, as_cmap=True)
+#    sns.heatmap(corr, cmap=colormap)
+#    plt.title('Video Set {}'.format(vid_set_num), fontsize=20)
+#    plt.subplots_adjust(left=0.22, bottom=0.20, top=0.95, right=0.90)
+#    plt.xticks(range(len(corr.columns)), corr.columns);
+#    plt.yticks(range(len(corr.columns)), corr.columns)
+#    plt.savefig('{}/{}_vidset{}_heatmap.png'.format(dir, met, vid_set_num))
+#    #plt.show()
+#    plt.close()
+#    return
 
 # Randomly shuffles dataset and correlates first half of shuffled set to second half of shuffled set. Repeats 'num' times. Used to estimate reliability of dataset.
+
 def get_split_half_reliabilities(num, data):
     
     corr_sum = 0
@@ -254,16 +326,98 @@ def get_split_half_reliabilities(num, data):
     return reliabilities
     '''
 
+def plot_layer_fit(reg, title):
+    
+    fig, ax = plt.subplots()
+    #labels = list(scores.keys())
+    #labels.insert(0, '')
+    ax.set_ylabel('Scores')
+    ax.set_title(title)
+    ax.axhline(y=0, color='black')
+    ax.axhline(y=0, color='black')
+
+    set_trace()
+
+    colors = ['black', 'blue', 'red', 'green']
+
+    #means = np.array([np.nanmean(reg[layer]) for layer in reg][:-1])
+    #k = np.arange(len(means))
+    
+    for i, r in enumerate(reg):
+        m = ax.plot(np.arange(len(reg[r])), reg[r], marker='.', c=colors[i], linestyle='-', linewidth=2, label=r)
+
+#    fit = np.polyfit(np.ravel(np.argwhere(~np.isnan(means))), means[~np.isnan(means)], deg)
+#    fit_fn = np.poly1d(fit)
+#
+#    f = ax.plot(k, fit_fn(k), marker='.', c='blue', linestyle='-', linewidth=2, zorder=1, label=str(fit))
+    
+    ax.legend(loc ='upper right')
+    plt.show()
+
+def plot_layer_bar(scores, title, noise_ceiling=None):
+
+    fig, ax = plt.subplots()
+    labels = list(scores.keys())
+    labels.insert(0, '')
+    ax.set_ylabel('Scores')
+    ax.set_title(title)
+    ax.axhline(y=0, color='black')
+    ax.axhline(y=0, color='black')
+    ax.set_xticks(np.arange(len(labels)))
+    ax.set_xticklabels(labels, fontsize=7)
+    x_pos = 1
+
+    colors = ['black', 'blue']
+    stream_starts = [15, 20, 27, 34, 41, 48]
+    i = 0
+    
+    for layer in scores:
+   
+        s = scores[layer]
+        if int(layer) in stream_starts:
+            i = 1
+
+        mean = np.nanmean(s)
+        bar_middle = 0.5*(np.nanpercentile(s,25) + np.nanpercentile(s,75))
+        bar_height = np.nanpercentile(s,75) - np.nanpercentile(s,25)
+        median = np.nanpercentile(s,50)
+        mins = np.nanmin(s); maxs = np.nanmax(s)
+
+        ax.barh(y=bar_middle, height=bar_height, width=0.5, left=x_pos-0.25, color='white', edgecolor=colors[i])
+        ax.plot([x_pos-0.245, x_pos+0.245], [median, median], marker=None, c=colors[i], linewidth=1)
+        ax.plot([x_pos, x_pos], [mins, maxs], marker=None, c=colors[i], linestyle='dashed', linewidth=1, zorder=0)
+        ax.plot([x_pos-.12, x_pos+.12], [mins, mins], marker=None, c=colors[i], linewidth=1)
+        ax.plot([x_pos-.12, x_pos+.12], [maxs, maxs], marker=None, c=colors[i], linewidth=1)
+        ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
+        
+        if wilcoxon(s, alternative='greater')[1] < 0.01:
+            ax.plot(x_pos, -0.7, marker='*', color='black')
+
+        x_pos += 1
+        i = 0
+           
+    if noise_ceiling:
+        nc = noise_ceilings[behavior]
+        noise_middle = 0.5*(nc[0]+nc[1])
+        noise_height = nc[1]-nc[0]
+        ax.barh(y = noise_middle, height=noise_height, width=0.5, left=x_pos-0.25, color='lightgray', zorder=0)
+   
+    plt.show()
+
+
 # Plots error bar given the data set of prediction accuracy scores from cross-validation.
-def plot_error_bar(scores, noise_ceilings=None):
+def plot_error_bar(scores, noise_ceilings=None, title=None):
     
     fig, ax = plt.subplots()
     labels = ['','']
-    for model in scores:
-        for behavior in scores[model]:
+    
+    set_trace()
+    
+    for behavior in scores[list(scores.keys())[0]]:
+        for model in scores:
             labels.insert(-1,'{}-{}'.format(model, behavior))
     ax.set_ylabel('Correlation')
-    ax.set_title('Comparison of Average and Procrustes distance cross-validation accuracies')
+    ax.set_title(title)
     ax.axhline(y=0, color='black')
     ax.axhline(y=0, color='black')
     ax.set_xticklabels(labels)
@@ -271,14 +425,9 @@ def plot_error_bar(scores, noise_ceilings=None):
     
     colors = ['black', 'blue']
     
-    for i, model in enumerate(scores):
-        for behavior in scores[model]:
-        
+    for behavior in scores[list(scores.keys())[0]]:
+        for i, model in enumerate(scores):
             s = scores[model][behavior]
-        
-#            if noise_ceilings:
-#                nc = noise_ceilings[behavior]
-#                s = [score/nc for score in s]
         
             mean = np.mean(s)
             bar_middle = 0.5*(np.percentile(s,25) + np.percentile(s,75))
@@ -296,7 +445,7 @@ def plot_error_bar(scores, noise_ceilings=None):
                 nc = noise_ceilings[behavior]
                 noise_middle = 0.5*(nc[0]+nc[1])
                 noise_height = nc[1]-nc[0]
-                ax.barh(y = noise_middle, height=noise_height, width=0.5, left=x_pos-0.25, color='lightgray', zorder=0)
+                ax.barh(y = noise_middle, height=noise_height, width=0.7, left=x_pos-0.35, color=(.22, .22, .22, .5), zorder=3)
         
             x_pos += 1
     
