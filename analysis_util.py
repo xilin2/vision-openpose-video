@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import matplotlib.patches as mpatches
+from matplotlib import rcParams
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -79,14 +82,14 @@ def combine_body_hand(body, hand):
 
 # Appends hand values at the end of the each frame, but unlike combine_body_and_hand, does not flatten the final output. Final 2-d output shape = (60 videos, 75 frames).
 def get_frame_by_frame(body, hand):
-   
+    
     frame_by_frame_1 = {}; frame_by_frame_2 = {}
     for key in body:
        if key.split('_')[0][-1] == '1':
            frame_by_frame_1[key] = []
            for i in range(len(body[key])):
                temp = []
-               temp.extend(body[key][i][0:2])
+               temp.extend(body[key][i])
                temp.extend(np.ravel(hand[key][i]))
                frame_by_frame_1[key].append(temp)
        else:
@@ -217,12 +220,12 @@ def to_df(data, names):
 def plot_heir_cluster(df, met, dir, vid_set_num):
     link = sch.linkage(df, method=met)
     dg = sch.dendrogram(link, orientation="right", leaf_font_size=6, labels=df.index)
-    plt.title('Video Set {}: No Tracking'.format(vid_set_num))
+    plt.title('Video Set {}'.format(vid_set_num))
     plt.xlabel('Videos')
     plt.gcf().set_size_inches((10,10))
     plt.subplots_adjust(left=0.22)
-    plt.savefig('{}/{}_vidset{}_dgram.png'.format(dir, met, vid_set_num))
-    #plt.show()
+    #plt.savefig('{}/{}_vidset{}_dgram.png'.format(dir, met, vid_set_num))
+    plt.show()
     plt.close()
     return dg['leaves']
 
@@ -354,76 +357,205 @@ def plot_layer_fit(reg, title):
     ax.legend(loc ='upper right')
     plt.show()
 
-def plot_layer_bar(scores, title, noise_ceiling=None):
+def plot_layer_bar(scores, labels, title, noise_ceiling=None):
+
+    set_trace()
 
     fig, ax = plt.subplots()
-    labels = list(scores.keys())
-    labels.insert(0, '')
+    #labels = list(scores.keys())
+    #labels.insert(0, '')
     ax.set_ylabel('Scores')
+    ax.set_xlabel('Layers')
     ax.set_title(title)
     ax.axhline(y=0, color='black')
     ax.axhline(y=0, color='black')
-    ax.set_xticks(np.arange(len(labels)))
+    ax.set_ylim(bottom=-0.015, top=0.20)
+    ax.set_xticks(labels)
     ax.set_xticklabels(labels, fontsize=7)
-    x_pos = 1
+    #x_pos = 1
 
-    colors = ['black', 'blue']
-    stream_starts = [15, 20, 27, 34, 41, 48]
-    i = 0
+    colors = ['purple', 'blue', 'green', 'red']
+    stream_starts = [1, 16, 21, 28, 35, 42, 49, 55]
+    stream_ys = [-0.005 for i in range(len(stream_starts))]
+    #i = 0
     
-    for layer in scores:
-   
-        s = scores[layer]
-        if int(layer) in stream_starts:
-            i = 1
-
-        mean = np.nanmean(s)
-        bar_middle = 0.5*(np.nanpercentile(s,25) + np.nanpercentile(s,75))
-        bar_height = np.nanpercentile(s,75) - np.nanpercentile(s,25)
-        median = np.nanpercentile(s,50)
-        mins = np.nanmin(s); maxs = np.nanmax(s)
-
-        ax.barh(y=bar_middle, height=bar_height, width=0.5, left=x_pos-0.25, color='white', edgecolor=colors[i])
-        ax.plot([x_pos-0.245, x_pos+0.245], [median, median], marker=None, c=colors[i], linewidth=1)
-        ax.plot([x_pos, x_pos], [mins, maxs], marker=None, c=colors[i], linestyle='dashed', linewidth=1, zorder=0)
-        ax.plot([x_pos-.12, x_pos+.12], [mins, mins], marker=None, c=colors[i], linewidth=1)
-        ax.plot([x_pos-.12, x_pos+.12], [maxs, maxs], marker=None, c=colors[i], linewidth=1)
-        ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
+    for i, behavior in enumerate(scores):
+        means = [np.nanmean(layer) for layer in scores[behavior]][:-1]
+        ax.plot(range(1,56), means, color=colors[i], ls='-', label=behavior)
         
-        if wilcoxon(s, alternative='greater')[1] < 0.01:
-            ax.plot(x_pos, -0.7, marker='*', color='black')
-
-        x_pos += 1
-        i = 0
-           
-    if noise_ceiling:
-        nc = noise_ceilings[behavior]
-        noise_middle = 0.5*(nc[0]+nc[1])
-        noise_height = nc[1]-nc[0]
-        ax.barh(y = noise_middle, height=noise_height, width=0.5, left=x_pos-0.25, color='lightgray', zorder=0)
-   
+    for i in range(len(stream_starts)-1):
+#        if i > 1:
+#            continue
+        height = -0.005
+        center = (stream_starts[i+1]+stream_starts[i])/2
+        width = stream_starts[i+1]-stream_starts[i]
+        ax.annotate(i, xy=(center,0.185), xytext=(center,0.185), xycoords='data', fontsize=12, ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.1), lw=1))
+    
+    #ax.scatter(stream_starts, stream_ys, color='black', marker='*', label='Start of Stream')
+        
+    ax.legend(loc='lower right')
     plt.show()
+    
+#    for layer in scores:
+#
+#        s = scores[layer]
+#        if int(layer) in stream_starts:
+#            i = 1
+#
+#        mean = np.nanmean(s)
+#        bar_middle = 0.5*(np.nanpercentile(s,25) + np.nanpercentile(s,75))
+#        bar_height = np.nanpercentile(s,75) - np.nanpercentile(s,25)
+#        median = np.nanpercentile(s,50)
+#        mins = np.nanmin(s); maxs = np.nanmax(s)
+#
+#        ax.barh(y=bar_middle, height=bar_height, width=0.5, left=x_pos-0.25, color='white', edgecolor=colors[i])
+#        ax.plot([x_pos-0.245, x_pos+0.245], [median, median], marker=None, c=colors[i], linewidth=1)
+#        ax.plot([x_pos, x_pos], [mins, maxs], marker=None, c=colors[i], linestyle='dashed', linewidth=1, zorder=0)
+#        ax.plot([x_pos-.12, x_pos+.12], [mins, mins], marker=None, c=colors[i], linewidth=1)
+#        ax.plot([x_pos-.12, x_pos+.12], [maxs, maxs], marker=None, c=colors[i], linewidth=1)
+#        ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
+#
+#        if wilcoxon(s, alternative='greater')[1] < 0.01:
+#            ax.plot(x_pos, -0.7, marker='*', color='black')
+#
+#        x_pos += 1
+#        i = 0
+#
+#    if noise_ceiling:
+#        nc = noise_ceilings[behavior]
+#        noise_middle = 0.5*(nc[0]+nc[1])
+#        noise_height = nc[1]-nc[0]
+#        ax.barh(y = noise_middle, height=noise_height, width=0.5, left=x_pos-0.25, color='lightgray', zorder=0)
+#
+#    plt.show()
 
+
+def plot_violin_plot(scores, behaviors, noise_ceilings=None, title=None):
+
+    set_trace()
+
+    colors = [(.15,.25,.75), (.15,.5,.15), (.75,.25,.25)]
+    models = {'avg': 'Averaged Poses', 'pro': 'Procrustes', 'parts': 'Body Parts', 'avg-cent': 'Centroids'}
+    
+    fig, axs = plt.subplots(1, len(behaviors))
+    fig.text(0.45, 0.025, 'Prediction Model', fontsize=10, fontweight='bold')
+    fig.text(0.05, 0.35, 'Prediction Performance', rotation='vertical', fontsize=10, fontweight='bold')
+    if title:
+        fig.suptitle(title)
+    
+    for i, behavior in enumerate(scores[list(scores.keys())[0]]):
+        
+        if len(behaviors) == 1:
+            ax = axs
+        else:
+            ax = axs[i]
+        
+        s = []
+        for model in scores:
+            for score in scores[model][behavior]:
+                s.append([models[model], score])
+                
+        set_trace()
+        
+        df = pd.DataFrame(s, columns=['Model', 'Score'])
+    
+        sns.violinplot(ax=ax, x='Model', y='Score', data=df, cut=0, color=colors[i])
+        ax.set_title(behavior)
+        ax.set_ylim(bottom=-1, top=1)
+        ax.set_xlim(left=-0.5, right=len(scores)-0.5)
+        ax.set_ylabel('')
+        ax.set_xlabel('')
+        
+        if noise_ceilings:
+            nc = noise_ceilings[behavior]
+            noise_middle = 0.5*(nc[0]+nc[1])
+            noise_height = nc[1]-nc[0]
+            ax.barh(y = noise_middle, height=noise_height, width=4, left=-1, color=(.22, .22, .22, .5), zorder=3)
+        
+    
+    plt.rc('xtick',labelsize=5)
+    plt.rc('ytick',labelsize=5)
+    plt.show()
 
 # Plots error bar given the data set of prediction accuracy scores from cross-validation.
 def plot_error_bar(scores, noise_ceilings=None, title=None):
     
-    fig, ax = plt.subplots()
-    labels = ['','']
-    
     set_trace()
     
-    for behavior in scores[list(scores.keys())[0]]:
-        for model in scores:
-            labels.insert(-1,'{}-{}'.format(model, behavior))
-    ax.set_ylabel('Correlation')
+    fig, ax = plt.subplots()
+    labels = ['','']
+    models = {'avg': 'Averaged Poses', 'pro': 'Procrustes', 'parts': 'Body Parts Involved'}
+    
+#    set_trace()
+    
+#    for behavior in scores[list(scores.keys())[0]]:
+#        for model in scores:
+#            #labels.insert(-1,'{}-{}'.format(model, behavior))
+#            labels.insert(-1, behavior)
+    ax.set_ylabel('Prediction Performance', fontsize=10, fontweight='bold')
+    ax.set_xlabel('Behavior Being Predicted', fontsize=10, fontweight='bold')
+    rcParams['axes.labelpad'] = 30
     ax.set_title(title)
     ax.axhline(y=0, color='black')
     ax.axhline(y=0, color='black')
-    ax.set_xticklabels(labels)
+#    ax.set_xticklabels(labels)
     x_pos = 1
     
-    colors = ['black', 'blue']
+    t_colors = [(.15,.25,.75,.5), (.15,.5,.15,.5), (.75,.25,.25,.5)]
+    colors = [(.15,.25,.75), (.15,.5,.15), (.75,.25,.25)]
+    
+    for i, model in enumerate(scores):
+        
+        means = []; bar_middles = []; bar_heights = []; medians = []; xs = []
+        
+        for j, behavior in enumerate(scores[model]):
+        
+            labels.insert(-1, behavior)
+        
+            s = scores[model][behavior]
+            
+            mean = np.mean(s)
+            bar_middle = 0.5*(np.percentile(s,25) + np.percentile(s,75))
+            bar_height = np.percentile(s,75) - np.percentile(s,25)
+            median = np.percentile(s,50)
+            x = x_pos + j*len(scores)
+           
+            means.append(mean)
+            bar_middles.append(bar_middle)
+            bar_heights.append(bar_height)
+            medians.append(median)
+            xs.append(x)
+            
+            ax.plot([x-0.245, x+0.245], [median, median], marker=None, c='black', linewidth=1)
+            ax.plot([x, x], [min(s), max(s)], marker=None, c=colors[i], linestyle='dashed', linewidth=1, zorder=0)
+            ax.plot([x-.12, x+.12], [min(s), min(s)], marker=None, c=colors[i], linewidth=1)
+            ax.plot([x-.12, x+.12], [max(s), max(s)], marker=None, c=colors[i], linewidth=1)
+            ax.plot([x-.245, x+.245], [mean, mean], c='red', marker=None, linewidth=1)
+            
+            if noise_ceilings:
+                nc = noise_ceilings[behavior]
+                noise_middle = 0.5*(nc[0]+nc[1])
+                noise_height = nc[1]-nc[0]
+                ax.barh(y = noise_middle, height=noise_height, width=0.7, left=x-0.35, color=(.22, .22, .22, .5), zorder=3)
+        
+        xs = np.array(xs)
+        ax.barh(y=bar_middles, height=bar_heights, width=0.5, left=xs-0.25, color=t_colors[i], edgecolor='black', label=models[model])
+
+        x_pos += 1
+    
+    patch = mpatches.Patch(color=(.22, .22, .22, .5), label='Noise Ceiling')
+    line = Line2D([0], [0], color='red', linewidth=1, linestyle='-', label='Mean')
+    
+    handles, l = ax.get_legend_handles_labels()
+    handles.extend([patch, line])
+    
+    ax.legend(handles=handles, loc='best')
+    ax.set_xticklabels(labels)
+    ax.set_xticks(np.arange(len(labels)))
+    
+    plt.show()
+        
+    set_trace()
     
     for behavior in scores[list(scores.keys())[0]]:
         for i, model in enumerate(scores):
