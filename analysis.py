@@ -9,6 +9,7 @@ import random
 import math
 
 import analysis_util as util
+import analysis as anl
 
 from sklearn.datasets import load_iris
 from scipy.signal import correlate
@@ -28,45 +29,6 @@ import statsmodels.api as sm
 #import statsmodels.discrete.discrete_model
 
 from pdb import set_trace
-
-def kfold_cross_validation(predictors, judgements, k, label, removed_joints=[], removed_videos=[], method=None):
-    
-    segments = np.arange(0, 60, k)
-    rand = np.arange(0,60)
-    random.shuffle(rand)
-    
-    # Initializes regression net
-    if method == 'reg':
-        alpha = 0.05
-        net = ElasticNet(alpha=alpha)
-    else:
-        net = LinearRegression()
-
-    scores = []
-
-    # Cycles through each video, obtaining prediction accuracies
-    for s in segments:
-    
-        target_index = rand[s:s+k]
-        
-        behavior_train, target = util.hold_pairs(target_index, judgements, removed_videos)
-        feature_train = []; feature_test = []
-        # Appends train/test data from each predictor onto arrays
-        for j, pred in enumerate(predictors):
-            tr, te = util.hold_pairs(target_index, pred, removed_videos)
-            feature_train.append(tr); feature_test.append(te)
-         
-        net.fit(np.transpose(feature_train), np.transpose(behavior_train))
-        predicted = net.predict(np.transpose(feature_test))
-        score = pearsonr(np.ravel(predicted), np.ravel(target))[0]
-        scores.append(score)
-         
-    prediction_accuracy = np.mean(scores)
-
-    #print('Average prediction accuracy for {} similarity: {}'.format(label, prediction_accuracy))
-            
-    return scores
-
 
 def cross_validation(predictors, judgements, label, removed_joints=[], removed_videos=[], method=None):
            
@@ -190,37 +152,7 @@ class LayerDataAnalysis():
         print('----------')
         
         return scores_for_behavior
-    
-    def kfold_cross_validation(self, k, n, method=None):
-    
-        print('Layer k-fold cross-validation results')
-        
-        scores_for_behavior = {}
-        
-        for behavior in self.group_behavioral_data:
             
-            judgements = np.ravel(zscore(self.group_behavioral_data[behavior]))
-            judgements_matrix = squareform(judgements)
-            
-            scores_by_layer = []
-            
-            for layer in self.layer_data:
-            
-                scores_by_n = []
-                for i in range(n):
-                    scores = kfold_cross_validation([squareform(self.layer_data[layer])], judgements_matrix, k, behavior, method=method)
-                    scores_by_n.append(np.mean(scores))
-                scores_by_layer.append(scores_by_n)
-            
-            scores_for_behavior[behavior] = scores_by_layer
-        
-        print('----------')
-        
-        set_trace()
-        
-        return scores_for_behavior
-            
-    
     def regression_analysis(self, scores, deg, behavior):
     
         means = np.array([np.nanmean(scores[layer]) for layer in scores])
@@ -275,7 +207,7 @@ class PoseDataAnalysis():
     behavioral data
     '''
     
-    def __init__(self, body_file, hand_file, xls_path, removed_videos=[], removed_joints=[], model=None, set_num=1, behaviors=None):
+    def __init__(self, body_file, hand_file, xls_file, removed_videos=[], removed_joints=[], model=None, set_num=1, behaviors=None):
     
         body, hand, set1_names, set2_names = self.load_pose_data(body_file, hand_file, xls_file)
         if behaviors:
@@ -490,7 +422,6 @@ class PoseDataAnalysis():
         
         return predictors_matrix
         
-    
     def construst_avg_com_matrices(self, predictors):
         
         predictors_matrix = [] # stores dissimilarity matrices
@@ -716,9 +647,6 @@ class PoseDataAnalysis():
                 joint_values[row['joint']] += 1
                 
         removed_joints = []
-#        for i in range(len(joint_values)):
-#            if joint_values[i] < 30:
-#                removed_joints.append(i)
         
         for i, row in df.iterrows():
             if row['frequency'] > 0:
