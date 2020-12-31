@@ -3,6 +3,8 @@ import numpy as np
 import glob
 from scipy.io import savemat
 from pdb import set_trace
+import matplotlib.pyplot as plt
+import time
 
 from scipy.stats import zscore
 from scipy.spatial.distance import pdist
@@ -17,15 +19,83 @@ from src import model
 from src import util
 from src.body_hook import Body
 
+from torchvision.models import vgg19
+import torchvision.transforms as transforms
+#from keras.applications.vgg16 import VGG16
+import torch
+from fastai.torch_core import flatten_model
+from PIL import Image
+
+from src.model import bodypose_model
+from src.util import Hook, get_layer_names
+
 # Returns two dictionaries storing 2d numpy arrays containing pose data for each video in a video set
 
+class VGGhook():
+    
+    def __init__(self):
+        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = vgg19(pretrained=True).to(self.device)
+
+        self.layers = flatten_model(self.model)
+        self.layer_names = get_layer_names(self.layers)
+        
+        for l in self.layer_names:
+            print(l)
+        
+        set_trace()
+        
+    def __call__(self, oriImg, layer_to_hook):
+        
+        # Process image
+        img = cv2.cvtColor(oriImg, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, (224, 224), interpolation = cv2.INTER_AREA)
+        img = Image.fromarray(img)
+        
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        preprocessing = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])
+        
+        data = preprocessing(img)
+        
+        try:
+            layer_index, layer = self.layer_names[layer_to_hook]
+            hook = Hook(self.layers[layer_index])
+            
+            self.model(data[None, ...])
+            hook.close()
+            
+            out = hook.output
+            out = out.clone().detach().requires_grad_(True)
+            features = out.detach().numpy().flatten()
+        
+        except Exception:
+            hook.close()
+            
+        return features
+    
 class VidHooking():
 
-    def __init__(self, dir):
+    def __init__(self, model, dir):
+        
+        self.model = model
+        if model == 'vgg16':
+            self.net = VGGhook()
+            self.layer_count = len(self.net.layer_names)
+        elif model == 'openpose':
+            self.net = Body('../model/body_pose_model.pth')
+            self.layer_count = 55
             
-        self.body_hooking = Body('../model/body_pose_model.pth')
-        self.body_estimation = Body('../model/body_pose_model.pth', hooking=False)
         self.vid_list = self.read_vid_data(dir)
+            
+#        self.body_hooking = Body('../model/body_pose_model.pth')
+#        self.body_estimation = Body('../model/body_pose_model.pth', hooking=False)
+        
 #        self.frame_list = self.get_frame_info()
     
     def read_vid_data(self, dir):
@@ -51,17 +121,35 @@ class VidHooking():
     def get_full_features(self):
         rdms = {} # Eventually store 56 rdms
         
+        #layers_of_interest = [14, 17, 24, 31, 38, 45, 52]
+        
         # Cycles through each hooking layer
-        for layer in range(0,56):
+        #for layer in range(0,56):
+        for layer in range(self.layer_count):
+        
+            #print('working on layer {}/{}'.format(layer+1, self.layer_count))
             
+            '''
+            if layer not in layers_of_interest: # visualize
+                continue
+            '''
+            
+            #print(layer) #visualize
+ 
             avgd_data_for_layer = []
             
             # Cycles through each video in vid_list
             for counter, vid_info in enumerate(self.vid_list, 1): # vid_info[video, filename]
 
+#                if counter is not 4: # visualize
+#                    continue
+
                 data = self.get_vid_data_for_layer(vid_info, layer)
+#                continue # visualize
+                
                 avgd_data_for_layer.append(data)
         
+            # removed (released) temporarily for visualization
             distance_vector = pdist(avgd_data_for_layer, metric='sqeuclidean')
             distance_vector = zscore(distance_vector)
             rdms['Layer_{}'.format(layer)] = distance_vector
@@ -95,6 +183,7 @@ class VidHooking():
             frames_read = 0
             
             while frames_read < 75:
+            #while frames_read < 1:
             
                 flag, frame = cap.read() # read in the next frame
                 pos_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) # frame index
@@ -108,19 +197,43 @@ class VidHooking():
                     # first frame, sets the shape for the proceeding array additions
                     if frames_read == 0:
                         if layer < 55:
-                            return_data = np.array(self.body_hooking(frame, layer_to_hook=layer))
+                                
+                            return_data = np.array(self.net(frame, layer_to_hook=layer))
+                            
+                            '''
+                            print(sum(return_data.flatten()))
+                            
+                            # visualize data
+                        
+                            probMap = return_data[0,:,:,:]
+                            
+                            for r in probMap:
+                                map = cv2.resize(r, (512,512))
+                                plt.imshow(map, alpha=0.6)
+                            plt.savefig('layer_images/vid4_{}_NO14'.format(layer))
+                            
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            
+                            return return_data
+                            '''
+                        
+                        '''
                         else:
                             candidate, subset = self.body_estimation(frame)
                             return_data = np.array(self.get_final_pose(candidate, subset, frame.shape[0]))
+                        '''
                     else:
                         if layer < 55:
-                            features = np.array(self.body_hooking(frame, layer_to_hook=layer))
+                            features = np.array(self.net(frame, layer_to_hook=layer))
+                        
+                        '''
                         else:
                             candidate, subset = self.body_estimation(frame)
                             features = np.array(self.get_final_pose(candidate, subset, frame.shape[0]))
                         return_data = np.add(return_data, features)
+                        '''
             
-                frames_read += 1
+                    frames_read += 1
         
         except Exception as e:
             cap.release()
@@ -157,8 +270,17 @@ class VidHooking():
                             
 if __name__ == "__main__":
     
+    set_trace()
+    
     dir = 'exp/vids_set/'
-    hooking = VidHooking(dir)
+    #vgghook = VGGhook()
+    
+    start_time = time.time()
+    
+    hooking = VidHooking('vgg16', dir)
     rdms = hooking.get_full_features()
-    savemat(dir+dir.split('/')[1]+'_hooking_RDMs.mat', rdms)
+    savemat(dir+dir.split('/')[1]+'_hooking_vgg19_RDMs.mat', rdms)
+    
+    print("--- Hooking completed in %s minutes ---" % ((time.time() - start_time)/60))
+    
     set_trace()

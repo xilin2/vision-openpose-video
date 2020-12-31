@@ -359,19 +359,17 @@ def plot_layer_fit(reg, title):
 
 def plot_layer_bar(scores, labels, title, noise_ceiling=None):
 
-    set_trace()
-
     fig, ax = plt.subplots()
     #labels = list(scores.keys())
     #labels.insert(0, '')
-    ax.set_ylabel('Scores')
-    ax.set_xlabel('Layers')
-    ax.set_title(title)
+    ax.set_ylabel('Scores', labelpad=20, fontsize=12, fontweight='bold')
+    ax.set_xlabel('Layers', labelpad=20, fontsize=12, fontweight='bold')
+    #ax.set_title(title)
     ax.axhline(y=0, color='black')
     ax.axhline(y=0, color='black')
-    ax.set_ylim(bottom=-0.015, top=0.20)
+    ax.set_ylim(bottom=-0.015, top=0.30)
     ax.set_xticks(labels)
-    ax.set_xticklabels(labels, fontsize=7)
+    ax.set_xticklabels(labels, fontsize=8)
     #x_pos = 1
 
     colors = ['purple', 'blue', 'green', 'red']
@@ -379,9 +377,15 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
     stream_ys = [-0.005 for i in range(len(stream_starts))]
     #i = 0
     
-    for i, behavior in enumerate(scores):
-        means = [np.nanmean(layer) for layer in scores[behavior]][:-1]
+    for i, behavior in enumerate(scores[0]):
+        means = [np.nanmean(layer) for layer in scores[0][behavior]][:-1]
+        print(max(means))
         ax.plot(range(1,56), means, color=colors[i], ls='-', label=behavior)
+        
+    for i, behavior in enumerate(scores[1]):
+        means = [np.nanmean(layer) for layer in scores[1][behavior]][:15]
+        print(max(means))
+        ax.plot(range(1,16), means, color=colors[i], ls='--', label=behavior+' (VGG)')
         
     for i in range(len(stream_starts)-1):
 #        if i > 1:
@@ -393,53 +397,18 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
     
     #ax.scatter(stream_starts, stream_ys, color='black', marker='*', label='Start of Stream')
         
-    ax.legend(loc='lower right')
+    ax.legend(loc='upper right', ncol=4)
     plt.show()
-    
-#    for layer in scores:
-#
-#        s = scores[layer]
-#        if int(layer) in stream_starts:
-#            i = 1
-#
-#        mean = np.nanmean(s)
-#        bar_middle = 0.5*(np.nanpercentile(s,25) + np.nanpercentile(s,75))
-#        bar_height = np.nanpercentile(s,75) - np.nanpercentile(s,25)
-#        median = np.nanpercentile(s,50)
-#        mins = np.nanmin(s); maxs = np.nanmax(s)
-#
-#        ax.barh(y=bar_middle, height=bar_height, width=0.5, left=x_pos-0.25, color='white', edgecolor=colors[i])
-#        ax.plot([x_pos-0.245, x_pos+0.245], [median, median], marker=None, c=colors[i], linewidth=1)
-#        ax.plot([x_pos, x_pos], [mins, maxs], marker=None, c=colors[i], linestyle='dashed', linewidth=1, zorder=0)
-#        ax.plot([x_pos-.12, x_pos+.12], [mins, mins], marker=None, c=colors[i], linewidth=1)
-#        ax.plot([x_pos-.12, x_pos+.12], [maxs, maxs], marker=None, c=colors[i], linewidth=1)
-#        ax.plot([x_pos-.245, x_pos+.245], [mean, mean], c='red', marker=None, linewidth=1)
-#
-#        if wilcoxon(s, alternative='greater')[1] < 0.01:
-#            ax.plot(x_pos, -0.7, marker='*', color='black')
-#
-#        x_pos += 1
-#        i = 0
-#
-#    if noise_ceiling:
-#        nc = noise_ceilings[behavior]
-#        noise_middle = 0.5*(nc[0]+nc[1])
-#        noise_height = nc[1]-nc[0]
-#        ax.barh(y = noise_middle, height=noise_height, width=0.5, left=x_pos-0.25, color='lightgray', zorder=0)
-#
-#    plt.show()
 
 
 def plot_violin_plot(scores, behaviors, noise_ceilings=None, title=None):
 
-    set_trace()
-
-    colors = [(.15,.25,.75), (.15,.5,.15), (.75,.25,.25)]
-    models = {'avg': 'Averaged Poses', 'pro': 'Procrustes', 'parts': 'Body Parts', 'avg-cent': 'Centroids'}
+    #colors = [(.15,.25,.75), (.15,.5,.15), (.75,.25,.25)]
+    models = {'avg': 'Averaged\nPoses', 'pro': 'Procrustes', 'parts': 'Body\nParts', 'avg-cent': 'Centroids'}
     
     fig, axs = plt.subplots(1, len(behaviors))
-    fig.text(0.45, 0.025, 'Prediction Model', fontsize=10, fontweight='bold')
-    fig.text(0.05, 0.35, 'Prediction Performance', rotation='vertical', fontsize=10, fontweight='bold')
+    fig.text(0.45, 0.015, 'Prediction Model', fontsize=14, fontweight='bold')
+    fig.text(0.05, 0.35, 'Prediction Performance', rotation='vertical', fontsize=14, fontweight='bold')
     if title:
         fig.suptitle(title)
     
@@ -454,12 +423,10 @@ def plot_violin_plot(scores, behaviors, noise_ceilings=None, title=None):
         for model in scores:
             for score in scores[model][behavior]:
                 s.append([models[model], score])
-                
-        set_trace()
         
         df = pd.DataFrame(s, columns=['Model', 'Score'])
     
-        sns.violinplot(ax=ax, x='Model', y='Score', data=df, cut=0, color=colors[i])
+        sns.violinplot(ax=ax, x='Model', y='Score', data=df, cut=0, palette='deep')
         ax.set_title(behavior)
         ax.set_ylim(bottom=-1, top=1)
         ax.set_xlim(left=-0.5, right=len(scores)-0.5)
@@ -472,7 +439,6 @@ def plot_violin_plot(scores, behaviors, noise_ceilings=None, title=None):
             noise_height = nc[1]-nc[0]
             ax.barh(y = noise_middle, height=noise_height, width=4, left=-1, color=(.22, .22, .22, .5), zorder=3)
         
-    
     plt.rc('xtick',labelsize=5)
     plt.rc('ytick',labelsize=5)
     plt.show()

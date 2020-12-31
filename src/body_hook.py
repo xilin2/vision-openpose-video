@@ -45,6 +45,7 @@ class Body(object):
         thre1 = 0.1
         thre2 = 0.05
         multiplier = [x * boxsize / oriImg.shape[0] for x in scale_search]
+        
         heatmap_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], 19))
         paf_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], 38))
 
@@ -81,7 +82,8 @@ class Body(object):
 #                            if layer_to_hook == 14:
 #                                self.out_prim = out
                             out = out.clone().detach().requires_grad_(True)
-                            features = out.detach().numpy().flatten()
+                            features = out.detach().numpy() # visualize
+                            #features = out.detach().numpy().flatten()
                             #feature_maps[i] = features
                         
                         elif layer_to_hook in range(15,55):
@@ -103,10 +105,15 @@ class Body(object):
                             hook_prim.close()
                             out_prim = hook_prim.output
                             
-                            concat = torch.cat([out1, out2, out_prim], 1)
+                            #concat = torch.cat([out1, out2, out_prim], 1)
+                            concat = torch.cat([out1, out2], 1)
                             
                             concat = concat.clone().detach().requires_grad_(True)
-                            features = concat.detach().numpy().flatten()
+                            
+                            #features = out1.detach().numpy()
+                            
+                            features = concat.detach().numpy() # visualize
+                            #features = concat.detach().numpy().flatten()
                             #feature_maps[i] = features
     
                 except Exception:

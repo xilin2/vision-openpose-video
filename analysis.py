@@ -534,8 +534,6 @@ class PoseDataAnalysis():
         predictors_matrix = [] # stores dissimilarity matrices
         for k in range(n): # Cycles through each of 26 trajectories
         
-            print(k)
-        
             # distance matrix to later be added to predictors_matrix
             distance_for_feature = [[] for m in range(len(trajectories))]
             for i, vid1 in enumerate(trajectories):
@@ -728,51 +726,22 @@ if __name__ == '__main__':
     xls_file = 'data/vidnamekey.xlsx'
     
     layer_file = 'data/vids_set_hooking_RDMs.mat'
+    layer_vgg_file = 'data/vids_set_hooking_vgg19_RDMS.mat'
     
     noise_ceilings = {'Visual': [0.5203, 0.5576], 'Movement': [0.7783, 0.7947], 'Goals': [0.5490, 0.5935], 'Intuitive': [0.4935, 0.5266]}
     
     ''' Layer Analysis '''
 
-    '''
-    
     analysis = LayerDataAnalysis(layer_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
-
-    
-#   r = 2
-#    fig, axs = plt.subplots(r,r)
-#    loi = np.arange(35,39)
-#    data = analysis.layer_data
-#
-#    # layer 1, 24
-#    # layer 8-12, 7
-#
-#    c = 0
-#    for layer in data:
-#        if int(layer) in loi:
-#            hm = sns.heatmap(squareform(data[layer]), ax=axs[int(c/r),c%r], xticklabels=False, yticklabels=False)
-#            axs[int(c/r),c%r].set_title(layer)
-#            c += 1
-#
-#    plt.show()
-
     scores = analysis.cross_validation(method='reg')
-
-    #for behavior in scores:
-    util.plot_layer_bar(scores, range(1,56), 'Layer and Behavior correlation scores')
+    vgg_analysis = LayerDataAnalysis(layer_vgg_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
+    vgg_scores = vgg_analysis.cross_validation(method='reg')
     
     set_trace()
     
-    '''
+    util.plot_layer_bar([scores, vgg_scores], np.arange(1,56,2), 'Layer and Behavior correlation scores')
     
-#
-#    for behavior in scores:
-#        reg = analysis.regression_analysis(scores[behavior], [1,2], behavior)
-#        util.plot_layer_fit(reg, title='Fit for {}'.format(behavior))
-#
-#        #util.plot_layer_fit(scores[behavior], title='Linear Fit for {}'.format(behavior), deg=1)
-#        #util.plot_layer_fit(scores[behavior], title='Quadratic Fit for {}'.format(behavior), deg=2)
-#
-#    set_trace()
+    set_trace()
     
     ''' Pose Analysis '''
     
@@ -788,7 +757,7 @@ if __name__ == '__main__':
     
     behaviors = ['visual', 'movement', 'goals']
 #    behaviors = ['intuitive']
-    models = ['avg', 'avg-cent']
+    models = ['avg', 'pro', 'parts']
     
     for model in models:
         analysis = PoseDataAnalysis(body_file, hand_file, xls_file, model=model, removed_videos=rv, removed_joints=rj, behaviors=behaviors)
