@@ -94,7 +94,8 @@ class VidHooking():
         self.model = model
         if model == 'vgg':
             self.net = VGGhook()
-            self.layer_count = len(self.net.layer_names)
+            #self.layer_count = len(self.net.layer_names)
+            self.layer_count = 17
         elif model == 'openpose':
             self.net = Body('../model/body_pose_model.pth') #calls modified Body code with added hooks
             self.layer_count = 55
@@ -133,11 +134,11 @@ class VidHooking():
     def get_full_features(self):
     
         '''
-        For each video and layer of network, finds average of network output
+        For each video and layer of network, finds average of layer output
         across all frames. Returns dictionary of 60x60 rdms (one for each layer).
         '''
         
-        rdms = {} # Eventually store 56 rdms
+        rdms = {} # Eventually store rdms
         
         #layers_of_interest = [14, 17, 24, 31, 38, 45, 52]
         
@@ -243,12 +244,12 @@ class VidHooking():
                     else:
                         if layer < 55:
                             features = np.array(self.net(frame, layer_to_hook=layer))
+                            return_data = np.add(return_data, features)
                         
                         '''
                         else:
                             candidate, subset = self.body_estimation(frame)
                             features = np.array(self.get_final_pose(candidate, subset, frame.shape[0]))
-                        return_data = np.add(return_data, features)
                         '''
             
                     frames_read += 1
@@ -297,7 +298,7 @@ if __name__ == "__main__":
     
     hooking = VidHooking('vgg', dir)
     rdms = hooking.get_full_features()
-    savemat(dir+dir.split('/')[1]+'_hooking_vgg19_RDMs.mat', rdms)
+    savemat(dir+dir.split('/')[1]+'_hooking_vgg19_RDMs_NEW.mat', rdms)
     
     print("--- Hooking completed in %s minutes ---" % ((time.time() - start_time)/60))
     
