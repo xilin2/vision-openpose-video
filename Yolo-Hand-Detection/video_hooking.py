@@ -31,6 +31,9 @@ from src.util import Hook, get_layer_names
 
 # Returns two dictionaries storing 2d numpy arrays containing pose data for each video in a video set
 
+'''
+Modified VGG code with hooks added on non-ReLU layers.
+'''
 class VGGhook():
     
     def __init__(self):
@@ -78,27 +81,36 @@ class VGGhook():
             hook.close()
             
         return features
-    
+
+'''
+Performs video hooking analysis. Has function to call modified network (either
+VGG-19 or Openpose) for each frame in each video. Produces dissimilarity matrix
+for each layer (60x60).
+'''
 class VidHooking():
 
     def __init__(self, model, dir):
         
         self.model = model
-        if model == 'vgg16':
+        if model == 'vgg':
             self.net = VGGhook()
             self.layer_count = len(self.net.layer_names)
         elif model == 'openpose':
-            self.net = Body('../model/body_pose_model.pth')
+            self.net = Body('../model/body_pose_model.pth') #calls modified Body code with added hooks
             self.layer_count = 55
             
         self.vid_list = self.read_vid_data(dir)
             
 #        self.body_hooking = Body('../model/body_pose_model.pth')
 #        self.body_estimation = Body('../model/body_pose_model.pth', hooking=False)
-        
 #        self.frame_list = self.get_frame_info()
     
     def read_vid_data(self, dir):
+    
+        '''
+        Reads in video data for each of 60 videos. Returns a 2d array of format
+        [vid info, vid name]
+        '''
         
         vid_list = []
         
@@ -119,6 +131,12 @@ class VidHooking():
         return vid_list
     
     def get_full_features(self):
+    
+        '''
+        For each video and layer of network, finds average of network output
+        across all frames. Returns dictionary of 60x60 rdms (one for each layer).
+        '''
+        
         rdms = {} # Eventually store 56 rdms
         
         #layers_of_interest = [14, 17, 24, 31, 38, 45, 52]
@@ -277,7 +295,7 @@ if __name__ == "__main__":
     
     start_time = time.time()
     
-    hooking = VidHooking('vgg16', dir)
+    hooking = VidHooking('vgg', dir)
     rdms = hooking.get_full_features()
     savemat(dir+dir.split('/')[1]+'_hooking_vgg19_RDMs.mat', rdms)
     
