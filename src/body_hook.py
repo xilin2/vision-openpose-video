@@ -105,8 +105,8 @@ class Body(object):
                             hook_prim.close()
                             out_prim = hook_prim.output
                             
-                            #concat = torch.cat([out1, out2, out_prim], 1)
-                            concat = torch.cat([out1, out2], 1)
+                            concat = torch.cat([out1, out2, out_prim], 1)
+                            #concat = torch.cat([out1, out2], 1)
                             
                             concat = concat.clone().detach().requires_grad_(True)
                             
