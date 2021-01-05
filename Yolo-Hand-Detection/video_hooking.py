@@ -28,6 +28,7 @@ from PIL import Image
 
 from src.model import bodypose_model
 from src.util import Hook, get_layer_names
+from pdb import set_trace
 
 # Returns two dictionaries storing 2d numpy arrays containing pose data for each video in a video set
 
@@ -47,8 +48,6 @@ class VGGhook():
         for l in self.layer_names:
             print(l)
         
-        set_trace()
-        
     def __call__(self, oriImg, layer_to_hook):
         
         # Process image
@@ -66,20 +65,30 @@ class VGGhook():
         
         data = preprocessing(img)
         
+        if self.device.type == 'cuda':
+            data = data.cuda() 
+        
         try:
             layer_index, layer = self.layer_names[layer_to_hook]
             hook = Hook(self.layers[layer_index])
-            
+        
             self.model(data[None, ...])
             hook.close()
             
+            #set_trace()
             out = hook.output
-            out = out.clone().detach().requires_grad_(True)
-            features = out.detach().numpy().flatten()
+            if self.device.type != 'cuda':
+                out = out.clone().detach().requires_grad_(True)
+            elif self.device.type == 'cuda':
+                out = out.cpu().detach().numpy().flatten()
+
+            features = out
+
+            #features = out.detach().numpy().flatten()
         
         except Exception:
             hook.close()
-            
+        
         return features
 
 '''
@@ -99,7 +108,7 @@ class VidHooking():
         elif model == 'openpose':
             self.net = Body('../model/body_pose_model.pth') #calls modified Body code with added hooks
             self.layer_count = 55
-            
+
         self.vid_list = self.read_vid_data(dir)
             
 #        self.body_hooking = Body('../model/body_pose_model.pth')
@@ -162,7 +171,6 @@ class VidHooking():
 
 #                if counter is not 4: # visualize
 #                    continue
-
                 data = self.get_vid_data_for_layer(vid_info, layer)
 #                continue # visualize
                 
@@ -183,7 +191,6 @@ class VidHooking():
         '''
 
         try:
-
             cap = vid_info[0]
             vid_name = vid_info[1]
             
@@ -288,18 +295,15 @@ class VidHooking():
         return np.array(im).flatten()
                             
 if __name__ == "__main__":
-    
-    set_trace()
-    
+        
     dir = 'exp/vids_set/'
     #vgghook = VGGhook()
     
     start_time = time.time()
     
-    hooking = VidHooking('vgg', dir)
+    hooking = VidHooking('openpose', dir)
     rdms = hooking.get_full_features()
     savemat(dir+dir.split('/')[1]+'_hooking_vgg19_RDMs_NEW.mat', rdms)
     
     print("--- Hooking completed in %s minutes ---" % ((time.time() - start_time)/60))
     
-    set_trace()

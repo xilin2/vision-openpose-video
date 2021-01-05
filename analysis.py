@@ -127,31 +127,29 @@ class LayerDataAnalysis():
         return numerical_layers
     
     def cross_validation(self, method=None):
-        
         print('Layer cross-validation results')
-        
         scores_for_behavior = {} # Stores scores array for each behavioral
         # data category analyzed
-        
+        pvals_for_behavior = {}
+
         for behavior in self.group_behavioral_data:
-            
             # Creates array of dissimilarity matrices of behavioral data
             # to be used as train/target data
             judgements = np.ravel(zscore(self.group_behavioral_data[behavior]))
             #judgements_matrix = squareform(judgements)
-
             scores_by_layer = []
-            
+            pvals_by_layer = []
+
             for layer in self.layer_data:
-                scores = [pearsonr(self.layer_data[layer], judgements)[0]]
+                scores, pvals = pearsonr(self.layer_data[layer], judgements)
 #                scores = cross_validation([squareform(self.layer_data[layer])], judgements_matrix, behavior, method=method)
                 scores_by_layer.append(scores)
-
+                pvals_by_layer.append(pvals)
             scores_for_behavior[behavior] = scores_by_layer
-            
+            pvals_for_behavior[behavior] = pvals_by_layer
+
         print('----------')
-        
-        return scores_for_behavior
+        return scores_for_behavior, pvals_for_behavior
             
     def regression_analysis(self, scores, deg, behavior):
     
@@ -301,7 +299,6 @@ class PoseDataAnalysis():
         reliability test 1000 times and averages results.
         '''
         
-        set_trace()
     
         print('Printing reliabilities... may take a while')
         reliabilities = {}
@@ -426,7 +423,6 @@ class PoseDataAnalysis():
         
         predictors_matrix = [] # stores dissimilarity matrices
         
-        set_trace()
         
         distances = []
         for i in range(len(predictors)):
@@ -450,7 +446,6 @@ class PoseDataAnalysis():
                     dists.append(math.sqrt((x_cent-p[0])**2 + (y_cent-p[1])**2))
             distances.append(dists)
         
-        set_trace()
         
         distance_vector = pdist(distances, metric='sqeuclidean')
         distance_vector = zscore(distance_vector, nan_policy='omit')
@@ -725,19 +720,19 @@ if __name__ == '__main__':
     hand_file = 'data/vids_hand_new_track.mat'
     xls_file = 'data/vidnamekey.xlsx'
     
-    layer_file = 'data/vids_set_hooking_RDMs.mat'
-    layer_vgg_file = 'data/vids_set_hooking_vgg19_RDMS.mat'
+    layer_file = 'data/hooked_rdms_openpose.mat'
+    #layer_vgg_file = 'data/vids_set_hooking_vgg19_RDMS.mat'
+    layer_vgg_file = 'data/hooked_rdms_vgg19.mat'
     
     noise_ceilings = {'Visual': [0.5203, 0.5576], 'Movement': [0.7783, 0.7947], 'Goals': [0.5490, 0.5935], 'Intuitive': [0.4935, 0.5266]}
     
     ''' Layer Analysis '''
 
     analysis = LayerDataAnalysis(layer_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
-    scores = analysis.cross_validation(method='reg')
+    scores, pvals = analysis.cross_validation(method='reg')
     vgg_analysis = LayerDataAnalysis(layer_vgg_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
-    vgg_scores = vgg_analysis.cross_validation(method='reg')
+    vgg_scores, vgg_pvals = vgg_analysis.cross_validation(method='reg')
     
-    set_trace()
     
     util.plot_layer_bar([scores, vgg_scores], np.arange(1,56,2), 'Layer and Behavior correlation scores')
     

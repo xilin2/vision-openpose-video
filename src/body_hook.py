@@ -26,6 +26,7 @@ class Body(object):
         self.hooking = hooking
         self.model = bodypose_model()
         if torch.cuda.is_available():
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             self.model = self.model.cuda()
         model_dict = util.transfer(self.model, torch.load(model_path))
         self.model.load_state_dict(model_dict)
@@ -62,13 +63,12 @@ class Body(object):
             # data = data.permute([2, 0, 1]).unsqueeze(0).float()
             
             if self.hooking:
-            
+                
                 try:
                     with torch.no_grad():
                     
                         #feature_maps = {}
                         #preconcat_indeces = [19, 26, 33, 40, 47, 54]
-                        
                         if layer_to_hook in range(15):
                             
                             layer_index, layer = self.layer_names[layer_to_hook]
@@ -81,13 +81,20 @@ class Body(object):
                             out = hook.output
 #                            if layer_to_hook == 14:
 #                                self.out_prim = out
-                            out = out.clone().detach().requires_grad_(True)
-                            features = out.detach().numpy() # visualize
+                            if self.device.type != 'cuda':
+                                out = out.clone().detach().requires_grad_(True)
+                                features = out.detach().numpy().flatten()
+                            elif self.device.type == 'cuda':
+                                out = out.cpu().clone().detach().requires_grad_(True)
+                                features = out.cpu().detach().numpy().flatten()
+
+                            #features = out.detach().numpy() # visualize
+                            #features = out
                             #features = out.detach().numpy().flatten()
                             #feature_maps[i] = features
                         
                         elif layer_to_hook in range(15,55):
-                    
+                            
                             layer_index_1, layer_1 = self.layer_names[layer_to_hook]
                             layer_index_2, layer_2 = self.layer_names[layer_to_hook+40]
                             layer_index_prim, layer_prim = self.layer_names[14]
@@ -108,11 +115,15 @@ class Body(object):
                             concat = torch.cat([out1, out2, out_prim], 1)
                             #concat = torch.cat([out1, out2], 1)
                             
-                            concat = concat.clone().detach().requires_grad_(True)
+                            if self.device.type != 'cuda':
+                                concat = concat.clone().detach().requires_grad_(True)
+                                features = concat.detach().numpy().flatten() # visualize
+                            if self.device.type == 'cuda':
+                                concat = concat.cpu().clone().detach().requires_grad_(True)
+                                features = concat.cpu().detach().numpy().flatten()
                             
                             #features = out1.detach().numpy()
-                            
-                            features = concat.detach().numpy() # visualize
+                          
                             #features = concat.detach().numpy().flatten()
                             #feature_maps[i] = features
     

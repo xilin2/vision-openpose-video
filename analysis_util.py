@@ -380,7 +380,7 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
     for i, behavior in enumerate(scores[0]):
         means = [np.nanmean(layer) for layer in scores[0][behavior]][:-1]
         print(max(means))
-        ax.plot(range(1,56), means, color=colors[i], ls='-', label=behavior)
+        ax.plot(range(1,55), means, color=colors[i], ls='-', label=behavior)
         
     for i, behavior in enumerate(scores[1]):
         means = [np.nanmean(layer) for layer in scores[1][behavior]][:15]
@@ -393,7 +393,7 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
         height = -0.005
         center = (stream_starts[i+1]+stream_starts[i])/2
         width = stream_starts[i+1]-stream_starts[i]
-        ax.annotate(i, xy=(center,0.185), xytext=(center,0.185), xycoords='data', fontsize=12, ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.1), lw=1))
+        ax.annotate(i, xy=(center,0.25), xytext=(center,0.25), xycoords='data', fontsize=12, ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.1), lw=1))
     
     #ax.scatter(stream_starts, stream_ys, color='black', marker='*', label='Start of Stream')
         
