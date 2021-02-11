@@ -12,31 +12,20 @@ from scipy.spatial.distance import pdist, squareform
 
 from pdb import set_trace
 
-# What correlation to use?
-# What does 'mask out' mean?
-# Explain what I'm doing for permutation and masking out
-# How should I be structuing this? Running it all at once, or should I be saving data halfway so it doesn't take as much time to run each time
-
-# How often do I z-score? Do I z-score after each time I take an RDM in the vox permutation tests? --> NO, because already noramlized...
-
-# Is the noise distribution for cluster size across all voxels?
-
-# Takes super long to reshape
-
-# Takes a while to load data
-
-# How to deal with padding? NaNs? Are all the NaNs in the same place for a 60x342?
-
-'''
-Extract upper triangle of a square array
-'''
 def triu(array):
+
+    '''
+    Extract upper triangle of a square array
+    '''
+
     return array[np.triu_indices(len(array),k=1)]
 
-'''
-Unpads a brain patterns array
-'''
 def unpad(array):
+
+    '''
+    Unpads a brain patterns array
+    '''
+
     inds = np.ravel(np.argwhere(~np.isnan(array[0])))
     to_return = []
     for a in array:
@@ -46,8 +35,8 @@ def unpad(array):
 def load_layer_data(file):
 
     '''
-    Loads pose and video data. Returns body, hand, and video name data
-    as dictionaries.
+    Loads layer data. Returns list of length 55 with averaged layer output
+    data for all layers.
     '''
     
     layers = scipy.io.loadmat(file)
@@ -79,11 +68,12 @@ class BrainData():
         
         print("--- Loading data completed in %s minutes ---" % ((time.time() - start_time)/60))
         
-    '''
-    Computes correlation between all BrainData distance vectors and a
-    given array distance vector. Returns 1d vector of size len(data)
-    '''
     def correlate_brain(self, target):
+    
+        '''
+        Computes correlation between all BrainData distance vectors and a
+        given array distance vector. Returns 1d vector of size len(data)
+        '''
         
         print('Performing brain-pose correlations... this will be quick')
         
@@ -91,6 +81,14 @@ class BrainData():
         return np.array(brain_correlations)
         
     def voxwise_perm_tests(self, correlations, target, k):
+        
+        '''
+        For every voxel, shuffle brain brain data and creates new RDM.
+        Compare this new RDM with target and repeat k times. Voxel-layer
+        comparison is valid if correlation is in 99th percentile of random
+        correlations. Returns list of 99th percentile cutoffs for each voxel,
+        and the indices of valid voxels (as determined by this test).
+        '''
         
         print('Performing voxel permutation tests... *will* take a while (~2 hours)')
         start_time = time.time()
@@ -102,20 +100,19 @@ class BrainData():
             if i%(int(len(self.patterns)/20)) is 0:
                 print('{}% complete'.format(int(i/len(self.patterns)*100)))
         
-#            if i>100:
-#                print("--- Voxel-wise tests completed in {} minutes ---".format((time.time() - start_time)/60))
-#                set_trace()
-#                return real_indices, cutoffs
-        
             pat = unpad(p)
+            
+            #shuffled_corrs = [pearsonr(pdist(pat[np.random.permutation(pat.shape[0])], metric='sqeuclidean'), target)[0] for j in range(k)]
             
             # shuffles brain pattern, creates new RDM based on shuffled
             # and then correlates new RDM with target. Repeats k times
             
-            #shuffled_corrs = [pearsonr(pdist(pat[np.random.permutation(pat.shape[0])], metric='sqeuclidean'), target)[0] for j in range(k)]
             shuffled_corrs = []
             for j in range(k):
                 shuffled_corrs.append(spearmanr(pdist(pat[np.random.permutation(pat.shape[0])], metric='sqeuclidean'), target, nan_policy='omit')[0])
+            
+            # if the correlation calculated earlier is above the 99th percentile
+            # then the voxel correlation is valid
             cutoff = np.percentile(shuffled_corrs, 99)
             cutoffs.append(cutoff)
             if correlations[i] > cutoff:
@@ -126,7 +123,7 @@ class BrainData():
         return real_indices, cutoffs
 
 if __name__ == '__main__':
-   
+    
     brain_file = 'data/RSAData-formatted-set1.mat'
     brain_patterns = 'data/RSAData-formatted-BrainPatterns-set1.mat'
     body_file = 'data/vids_body_new_track.mat'
@@ -149,7 +146,7 @@ if __name__ == '__main__':
     #target_RDM = squareform(target_RDM)
     '''
     
-    # Perform brain analysis operation
+    # Perform brain analysis operation for each layer
     for i, layer in enumerate(layers_of_interest, 1):
         
         print('Beginning analysis of layer {} ({}/{})'.format(layer, i, len(layers_of_interest)))
