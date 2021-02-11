@@ -373,7 +373,7 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
     #x_pos = 1
 
     colors = ['purple', 'blue', 'green', 'red']
-    stream_starts = [1, 16, 21, 28, 35, 42, 49, 55]
+    stream_starts = [0, 15, 20, 27, 34, 41, 48, 55]
     stream_ys = [-0.005 for i in range(len(stream_starts))]
     #i = 0
     
@@ -391,7 +391,7 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
 #        if i > 1:
 #            continue
         height = -0.005
-        center = (stream_starts[i+1]+stream_starts[i])/2
+        center = (stream_starts[i+1]+stream_starts[i]+1)/2
         width = stream_starts[i+1]-stream_starts[i]
         ax.annotate(i, xy=(center,0.25), xytext=(center,0.25), xycoords='data', fontsize=12, ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.1), lw=1))
     

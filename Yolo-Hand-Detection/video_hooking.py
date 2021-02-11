@@ -107,7 +107,8 @@ class VidHooking():
             self.layer_count = 17
         elif model == 'openpose':
             self.net = Body('../model/body_pose_model.pth') #calls modified Body code with added hooks
-            self.layer_count = 55
+            #self.layer_count = 55
+            self.layer_count = 1
 
         self.vid_list = self.read_vid_data(dir)
             
@@ -154,7 +155,7 @@ class VidHooking():
         # Cycles through each hooking layer
         #for layer in range(0,56):
         for layer in range(self.layer_count):
-        
+            
             #print('working on layer {}/{}'.format(layer+1, self.layer_count))
             
             '''
@@ -222,9 +223,7 @@ class VidHooking():
                     
                     # first frame, sets the shape for the proceeding array additions
                     if frames_read == 0:
-                        if layer < 55:
-                                
-                            return_data = np.array(self.net(frame, layer_to_hook=layer))
+                        return_data = np.array(self.net(frame, layer_to_hook=layer))
                             
                             '''
                             print(sum(return_data.flatten()))
@@ -249,9 +248,8 @@ class VidHooking():
                             return_data = np.array(self.get_final_pose(candidate, subset, frame.shape[0]))
                         '''
                     else:
-                        if layer < 55:
-                            features = np.array(self.net(frame, layer_to_hook=layer))
-                            return_data = np.add(return_data, features)
+                        features = np.array(self.net(frame, layer_to_hook=layer))
+                        return_data = np.add(return_data, features)
                         
                         '''
                         else:
@@ -303,7 +301,7 @@ if __name__ == "__main__":
     
     hooking = VidHooking('openpose', dir)
     rdms = hooking.get_full_features()
-    savemat(dir+dir.split('/')[1]+'_hooking_vgg19_RDMs_NEW.mat', rdms)
+    savemat(dir+dir.split('/')[1]+'_hooking_oplayer1_RDM.mat', rdms)
     
     print("--- Hooking completed in %s minutes ---" % ((time.time() - start_time)/60))
     

@@ -720,9 +720,11 @@ if __name__ == '__main__':
     hand_file = 'data/vids_hand_new_track.mat'
     xls_file = 'data/vidnamekey.xlsx'
     
-    layer_file = 'data/hooked_rdms_openpose.mat'
-    #layer_vgg_file = 'data/vids_set_hooking_vgg19_RDMS.mat'
-    layer_vgg_file = 'data/hooked_rdms_vgg19.mat'
+    layer_file = 'data/hooking_openpose_RDMs.mat'
+    #layer_file = 'data/vids_set_hooking_oplayer1_RDM.mat'
+    layer_file_2 = 'data/vids_set_hooking_RDMs.mat'
+    layer_vgg_file = 'data/vids_set_hooking_vgg19_RDMS_NEW.mat'
+    #layer_vgg_file = 'data/hooked_rdms_vgg19.mat'
     
     noise_ceilings = {'Visual': [0.5203, 0.5576], 'Movement': [0.7783, 0.7947], 'Goals': [0.5490, 0.5935], 'Intuitive': [0.4935, 0.5266]}
     
@@ -733,6 +735,7 @@ if __name__ == '__main__':
     vgg_analysis = LayerDataAnalysis(layer_vgg_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
     vgg_scores, vgg_pvals = vgg_analysis.cross_validation(method='reg')
     
+    set_trace()
     
     util.plot_layer_bar([scores, vgg_scores], np.arange(1,56,2), 'Layer and Behavior correlation scores')
     

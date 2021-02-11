@@ -26,8 +26,10 @@ class Body(object):
         self.hooking = hooking
         self.model = bodypose_model()
         if torch.cuda.is_available():
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device("cuda")
             self.model = self.model.cuda()
+        else:
+            self.device = torch.device("cpu")
         model_dict = util.transfer(self.model, torch.load(model_path))
         self.model.load_state_dict(model_dict)
         self.model.eval()
@@ -81,12 +83,13 @@ class Body(object):
                             out = hook.output
 #                            if layer_to_hook == 14:
 #                                self.out_prim = out
-                            if self.device.type != 'cuda':
-                                out = out.clone().detach().requires_grad_(True)
-                                features = out.detach().numpy().flatten()
-                            elif self.device.type == 'cuda':
+
+                            if self.device.type == 'cuda':
                                 out = out.cpu().clone().detach().requires_grad_(True)
                                 features = out.cpu().detach().numpy().flatten()
+                            else:
+                                out = out.clone().detach().requires_grad_(True)
+                                features = out.detach().numpy().flatten()
 
                             #features = out.detach().numpy() # visualize
                             #features = out
