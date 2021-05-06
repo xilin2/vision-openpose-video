@@ -86,10 +86,10 @@ class Body(object):
 
                             if self.device.type == 'cuda':
                                 out = out.cpu().clone().detach().requires_grad_(True)
-                                features = out.cpu().detach().numpy().flatten()
+                                features = out.cpu().detach().numpy()
                             else:
                                 out = out.clone().detach().requires_grad_(True)
-                                features = out.detach().numpy().flatten()
+                                features = out.detach().numpy()
 
                             #features = out.detach().numpy() # visualize
                             #features = out
@@ -120,10 +120,10 @@ class Body(object):
                             
                             if self.device.type != 'cuda':
                                 concat = concat.clone().detach().requires_grad_(True)
-                                features = concat.detach().numpy().flatten() # visualize
+                                features = concat.detach().numpy() # visualize
                             if self.device.type == 'cuda':
                                 concat = concat.cpu().clone().detach().requires_grad_(True)
-                                features = concat.cpu().detach().numpy().flatten()
+                                features = concat.cpu().detach().numpy()
                             
                             #features = out1.detach().numpy()
                           

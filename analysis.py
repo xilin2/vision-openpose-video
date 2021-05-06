@@ -722,22 +722,32 @@ if __name__ == '__main__':
     
     layer_file = 'data/hooking_openpose_RDMs.mat'
     #layer_file = 'data/vids_set_hooking_oplayer1_RDM.mat'
-    layer_file_2 = 'data/vids_set_hooking_RDMs.mat'
+    #layer_file_2 = 'data/vids_set_hooking_RDMs.mat'
     layer_vgg_file = 'data/vids_set_hooking_vgg19_RDMS_NEW.mat'
     #layer_vgg_file = 'data/hooked_rdms_vgg19.mat'
     
     noise_ceilings = {'Visual': [0.5203, 0.5576], 'Movement': [0.7783, 0.7947], 'Goals': [0.5490, 0.5935], 'Intuitive': [0.4935, 0.5266]}
     
     ''' Layer Analysis '''
-
+    
     analysis = LayerDataAnalysis(layer_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
+    
+#    set_trace()
+#    dat = analysis.layer_data
+#    df = pd.DataFrame(dat)
+#    df.columns = np.arange(1,56)
+#    corr = df.corr()
+#    import seaborn as sn
+#    sn.heatmap(corr)
+#    plt.show()
+    
+#    set_trace()
+    
     scores, pvals = analysis.cross_validation(method='reg')
     vgg_analysis = LayerDataAnalysis(layer_vgg_file, behaviors=['visual', 'movement', 'goals', 'intuitive'])
     vgg_scores, vgg_pvals = vgg_analysis.cross_validation(method='reg')
     
-    set_trace()
-    
-    util.plot_layer_bar([scores, vgg_scores], np.arange(1,56,2), 'Layer and Behavior correlation scores')
+    util.plot_layer_bar([scores, vgg_scores], np.append(np.arange(2,11,2), 55), 'Layer and Behavior correlation scores')
     
     set_trace()
     

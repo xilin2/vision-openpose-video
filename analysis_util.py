@@ -362,42 +362,66 @@ def plot_layer_bar(scores, labels, title, noise_ceiling=None):
     fig, ax = plt.subplots()
     #labels = list(scores.keys())
     #labels.insert(0, '')
-    ax.set_ylabel('Scores', labelpad=20, fontsize=12, fontweight='bold')
-    ax.set_xlabel('Layers', labelpad=20, fontsize=12, fontweight='bold')
+    ax.set_ylabel('Human-Model Correlation', labelpad=15, fontsize=23, fontweight='bold')
+    ax.set_xlabel('Network Layers', labelpad=7, fontsize=23, fontweight='bold')
     #ax.set_title(title)
-    ax.axhline(y=0, color='black')
-    ax.axhline(y=0, color='black')
-    ax.set_ylim(bottom=-0.015, top=0.30)
+    #ax.axhline(y=-0.015, color='black')
+    #ax.axvline(x=0, color='black')
+    ax.set_ylim(bottom=-0.015, top=0.31)
     ax.set_xticks(labels)
-    ax.set_xticklabels(labels, fontsize=8)
+    ax.set_xticklabels(labels, fontsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=17)
     #x_pos = 1
 
     colors = ['purple', 'blue', 'green', 'red']
-    stream_starts = [0, 15, 20, 27, 34, 41, 48, 55]
+    #stream_starts = [0, 15, 20, 27, 34, 41, 48, 55]
+    section_starts = [0, 10, 55]
+    stream_starts = [20, 27, 34, 41, 48, 55]
     stream_ys = [-0.005 for i in range(len(stream_starts))]
     #i = 0
     
     for i, behavior in enumerate(scores[0]):
-        means = [np.nanmean(layer) for layer in scores[0][behavior]][:-1]
-        print(max(means))
-        ax.plot(range(1,55), means, color=colors[i], ls='-', label=behavior)
+        op_means = [np.nanmean(layer) for layer in scores[0][behavior]]
+        vgg_means = vgg_means = [np.nanmean(layer) for layer in scores[1][behavior]][:10]
+        if behavior == 'Movement':
+            lw=10
+        else:
+            lw=4
+        ax.plot(range(1,56), op_means, color=colors[i], lw=lw, ls='-', label=behavior)
+        ax.plot(range(1,11), vgg_means, color=colors[i], lw=lw, ls=(0,(1,1)), label=behavior+' (VGG)')
         
-    for i, behavior in enumerate(scores[1]):
-        means = [np.nanmean(layer) for layer in scores[1][behavior]][:15]
-        print(max(means))
-        ax.plot(range(1,16), means, color=colors[i], ls='--', label=behavior+' (VGG)')
+#    for i, behavior in enumerate(scores[1]):
+#        means = [np.nanmean(layer) for layer in scores[1][behavior]][:15]
+#        if label == 'Movement':
+#            lw=8
+#        else:
+#            lw=4
+#        ax.plot(range(1,16), means, color=colors[i], lw=lw, ls='--', label=behavior+' (VGG)')
         
+    #ax.arrow(15, -0.02, 40, 0, length_includes_head=True)
+    
+    for i in range(len(section_starts)-1):
+        height = -0.005
+        center = (section_starts[i+1]+section_starts[i]+1)/2
+        width = section_starts[i+1]-section_starts[i]
+        y=0.28
+        if i == 0:
+            label = 'Pose-Tuned'
+        else:
+            label = 'Pose-Specific'
+        ax.annotate(label, xy=(center,y), xytext=(center,y), xycoords='data', fontsize=14, fontweight='bold', ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.35), lw=1))
+    
     for i in range(len(stream_starts)-1):
 #        if i > 1:
 #            continue
         height = -0.005
         center = (stream_starts[i+1]+stream_starts[i]+1)/2
         width = stream_starts[i+1]-stream_starts[i]
-        ax.annotate(i, xy=(center,0.25), xytext=(center,0.25), xycoords='data', fontsize=12, ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.1), lw=1))
+        ax.annotate('Cycle {}'.format(i+1), xy=(center,0.25), xytext=(center,0.25), xycoords='data', fontsize=12, fontweight='bold', ha='center', va='bottom', bbox=dict(boxstyle='square', fc='white'), arrowprops=dict(arrowstyle='-[, widthB={}, lengthB=0.75'.format(width/2.2), lw=1))
     
     #ax.scatter(stream_starts, stream_ys, color='black', marker='*', label='Start of Stream')
         
-    ax.legend(loc='upper right', ncol=4)
+    #ax.legend(loc='upper right', ncol=1, bbox_to_anchor=(1.1, 1))
     plt.show()
 
 
